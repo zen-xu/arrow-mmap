@@ -42,6 +42,14 @@ public:
     return true;
   }
 
+  std::string mask_buffer_string() {
+    auto mask_addr = mask_writer_.mmap_addr();
+    auto mask_size = mask_writer_.length();
+    auto mask_count = mask_size / sizeof(bool);
+    auto mask_ptr = reinterpret_cast<bool *>(mask_addr);
+    return std::string(mask_ptr, mask_ptr + mask_count);
+  }
+
 private:
   static constexpr size_t tuple_size_ = sizeof(Tuple);
   static constexpr size_t tuple_count_ = std::tuple_size<Tuple>::value;
@@ -81,7 +89,7 @@ public:
 
     if (!std::all_of(std::begin(mask_buffer_), std::end(mask_buffer_),
                      [](bool b) { return b; })) {
-      quill::error(
+      quill::debug(
           logger_, "failed to read: mask is not all true: {}",
           std::string(std::begin(mask_buffer_), std::end(mask_buffer_)));
       return nullptr;

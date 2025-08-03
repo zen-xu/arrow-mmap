@@ -29,18 +29,21 @@ int main() {
   quill::info(logger, "init db");
   db.create(100);
 
+  quill::info(logger, "init writer");
   auto writer0 = db.writer<0>();
   auto writer1 = db.writer<1>();
-  quill::info(logger, "init writer");
 
-  auto reader = db.reader();
   quill::info(logger, "init reader");
+  auto reader = db.reader();
 
   writer0.write({1, 2, 3, 4});
+  quill::info(logger, "mask buffer: {}", writer0.mask_buffer_string());
+
+  auto data = reader.read(0);
+  quill::info(logger, "data is nullptr: {}", data == nullptr);
   quill::info(logger, "mask buffer: {}", reader.mask_buffer_string());
 
-  // auto data = reader.read(0);
-  // quill::info(logger, "data is nullptr: {}", data == nullptr);
+  return 0;
 
   // writer1.write({5, 6, 7});
   // data = reader.read(0);
@@ -54,6 +57,6 @@ int main() {
   //   quill::info(logger, "data1: {}", data1.string());
   // }
 
-  quill::Backend::stop();
-  return 0;
+  // quill::Backend::stop();
+  // return 0;
 }

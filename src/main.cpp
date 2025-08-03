@@ -31,7 +31,6 @@ int main() {
   quill::info(logger, "init writer");
 
   auto writer0 = db.writer<0>();
-  std::this_thread::sleep_for(std::chrono::seconds(100));
   auto writer1 = db.writer<1>();
   // INSERT_YOUR_CODE
 

@@ -21,59 +21,48 @@ inline size_t get_length(int fd) {
   return st.st_size;
 }
 
-struct MmapFD {
-  int fd;
-  size_t length;
-  void *mmap_addr;
-  quill::Logger *logger_;
-
-  MmapFD(int fd, void *mmap_addr, quill::Logger *logger)
-      : fd(fd), mmap_addr(mmap_addr), length(get_length(fd)), logger_(logger) {}
-
-  ~MmapFD() {
-    if (mmap_addr != MAP_FAILED) {
-      quill::info(logger_, "munmap {} length: {}", fd, length);
-      munmap(mmap_addr, length);
-      if (fd != -1) {
-        close(fd);
-        fd = -1;
-      }
-    }
-  }
-};
-
 class MmapWriter {
 public:
-  size_t length() const { return fd_->length; }
+  MmapWriter(int fd, void *mmap_addr, size_t length)
+      : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapWriter() = default;
+
+  size_t length() const { return length_; }
 
   bool write(const void *buf, size_t buf_n, size_t mmap_offset) {
-    if (mmap_offset + buf_n > fd_->length) {
+    if (-1 == fd_) {
       return false;
     }
-    std::memcpy(static_cast<char *>(fd_->mmap_addr) + mmap_offset, buf, buf_n);
+    if (mmap_offset + buf_n > length_) {
+      return false;
+    }
+    std::memcpy(static_cast<char *>(mmap_addr_) + mmap_offset, buf, buf_n);
     return true;
   }
 
-  void *mmap_addr() const { return fd_->mmap_addr; }
+  void *mmap_addr() const { return mmap_addr_; }
 
 private:
-  std::shared_ptr<MmapFD> fd_ = nullptr;
-
-  friend class MmapManager;
-  MmapWriter() : fd_(nullptr) {}
+  int length_ = 0;
+  int fd_ = -1;
+  void *mmap_addr_ = nullptr;
 };
 
 class MmapReader {
 public:
-  size_t length() const { return fd_->length; }
+  MmapReader(int fd, void *mmap_addr, size_t length)
+      : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapReader() = default;
 
-  void *mmap_addr() const { return fd_->mmap_addr; }
+  size_t length() const { return length_; }
+
+  void *mmap_addr() const { return mmap_addr_; }
 
   void *read(size_t data_size, size_t mmap_offset) {
-    if (mmap_offset + data_size > fd_->length) {
+    if (mmap_offset + data_size > length_) {
       return nullptr;
     }
-    return static_cast<char *>(fd_->mmap_addr) + mmap_offset;
+    return static_cast<char *>(mmap_addr_) + mmap_offset;
   }
 
   bool read(void *buf, size_t buf_n, size_t mmap_offset) {
@@ -86,15 +75,16 @@ public:
   }
 
 private:
-  std::shared_ptr<MmapFD> fd_ = nullptr;
-
-  friend class MmapManager;
-  explicit MmapReader() : fd_(nullptr) {}
+  int length_ = 0;
+  int fd_ = -1;
+  void *mmap_addr_ = nullptr;
 };
 
 class MmapManager {
 public:
-  explicit MmapManager(const std::string &file) : file_(file) {
+  explicit MmapManager(const std::string &file, int reader_flags = 0,
+                       int writer_flags = 0)
+      : file_(file), reader_flags_(reader_flags), writer_flags_(writer_flags) {
     logger_ = quill::Frontend::create_or_get_logger("default");
   }
 
@@ -115,7 +105,7 @@ public:
         std::filesystem::exists(file_) ? O_RDWR : O_RDWR | O_CREAT | O_TRUNC;
     int fd = open(truncate_file.c_str(), oflag,
                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (fd == -1) {
+    if (-1 == fd) {
       quill::error(logger_, "failed to open {}: {}", truncate_file,
                    strerror(errno));
       return false;
@@ -159,73 +149,88 @@ public:
     return true;
   }
 
-  MmapWriter writer(int mmap_flags = 0) {
-    auto writer = MmapWriter();
-    if (writer_fd_ == nullptr) {
-      int fd = open(file_.c_str(), O_RDWR | O_CREAT,
-                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-      if (fd == -1) {
-        quill::error(logger_, "failed to open {}: {}", file_, strerror(errno));
-        return writer;
-      }
+  MmapWriter writer() {
+    MmapWriter writer;
+    if (!init_fd()) {
+      return writer;
+    }
 
-      size_t length = get_length(fd);
-      if (length == 0) {
-        close(fd);
-        return writer;
-      }
-
-      auto addr = ::mmap(NULL, length, PROT_READ | PROT_WRITE,
-                         MAP_SHARED | mmap_flags, fd, 0);
+    if (mmap_writer_addr_ == nullptr) {
+      auto addr = ::mmap(NULL, length_, PROT_READ | PROT_WRITE,
+                         MAP_SHARED | writer_flags_, fd_, 0);
       if (addr == MAP_FAILED) {
         quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
-        close(fd);
         return writer;
       }
-
-      writer_fd_ = std::make_shared<MmapFD>(fd, addr, logger_);
-      quill::info(logger_, "init writer fd: {}", fd);
+      mmap_writer_addr_ = addr;
     }
-    writer.fd_ = writer_fd_;
-    return writer;
+
+    return MmapWriter(fd_, mmap_writer_addr_, length_);
   }
 
   MmapReader reader(int mmap_flags = 0) {
     auto reader = MmapReader();
-    if (reader_fd_ == nullptr) {
-      int fd =
-          open(file_.c_str(), O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-      if (-1 == fd) {
-        quill::error(logger_, "failed to open {}: {}", file_, strerror(errno));
-        return reader;
-      }
-      size_t length = get_length(fd);
-      if (length == 0) {
-        close(fd);
-        return reader;
-      }
-
-      auto addr =
-          ::mmap(NULL, length, PROT_READ, MAP_PRIVATE | mmap_flags, fd, 0);
-      if (MAP_FAILED == addr) {
-        quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
-        close(fd);
-        return reader;
-      }
-
-      reader_fd_ = std::make_shared<MmapFD>(fd, addr, logger_);
-      quill::info(logger_, "init reader fd: {}", fd);
+    if (!init_fd()) {
+      return reader;
     }
-    reader.fd_ = reader_fd_;
-    return reader;
+
+    if (mmap_reader_addr_ == nullptr) {
+      auto addr =
+          ::mmap(NULL, length_, PROT_READ, MAP_PRIVATE | reader_flags_, fd_, 0);
+      if (addr == MAP_FAILED) {
+        quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
+        return reader;
+      }
+      mmap_reader_addr_ = addr;
+    }
+
+    return MmapReader(fd_, mmap_reader_addr_, length_);
+  }
+
+  ~MmapManager() {
+    if (mmap_reader_addr_ != nullptr) {
+      munmap(mmap_reader_addr_, length_);
+    }
+    if (mmap_writer_addr_ != nullptr) {
+      munmap(mmap_writer_addr_, length_);
+    }
+    if (fd_ != -1) {
+      close(fd_);
+    }
   }
 
 private:
+  bool init_fd() {
+    if (-1 == fd_) {
+      int fd = open(file_.c_str(), O_RDWR | O_CREAT,
+                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+      if (fd == -1) {
+        quill::error(logger_, "failed to open {}: {}", file_, strerror(errno));
+        close(fd);
+        return false;
+      }
+
+      size_t length = get_length(fd);
+      if (length == 0) {
+        close(fd);
+        return false;
+      }
+
+      fd_ = fd;
+      length_ = length;
+    }
+    return true;
+  }
+
   std::string file_;
   quill::Logger *logger_ = nullptr;
-  std::shared_ptr<MmapFD> reader_fd_ = nullptr;
-  std::shared_ptr<MmapFD> writer_fd_ = nullptr;
+  int fd_ = -1;
+  size_t length_ = 0;
+  int reader_flags_ = 0;
+  int writer_flags_ = 0;
+  void *mmap_reader_addr_ = nullptr;
+  void *mmap_writer_addr_ = nullptr;
 };
 } // namespace mmap_db
 #endif // MMAP_MANAGER_HPP

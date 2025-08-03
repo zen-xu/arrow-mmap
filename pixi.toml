@@ -1,0 +1,23 @@
+[workspace]
+authors   = ["ZhengYu, Xu <zen-xu@outlook.com>"]
+channels  = ["conda-forge"]
+name      = "mmap_db"
+platforms = ["osx-64", "linux-64"]
+version   = "0.1.0"
+
+[tasks]
+
+[dependencies]
+lld          = ">=19.1.7,<21"
+clang        = ">=19.1.7,<21"
+clangxx      = ">=19.1.7,<21"
+clang-tools  = ">=19.1.7,<21"
+lldb         = ">=19.1.7,<21"
+llvm-tools   = ">=19.1.7,<21"
+compiler-rt  = ">=19.1.7,<21"
+cmake        = ">=3.31.5,<4"
+ninja        = ">=1.12.1,<2"
+cmake-format = ">=0.6.13"
+pre-commit   = "*"
+taplo        = "*"
+quill        = ">=10.0.1,<11"

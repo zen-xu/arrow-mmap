@@ -1,0 +1,7 @@
+set(CMAKE_C_COMPILER ${CMAKE_CURRENT_SOURCE_DIR}/.pixi/envs/default/bin/clang)
+set(CMAKE_CXX_COMPILER ${CMAKE_CURRENT_SOURCE_DIR}/.pixi/envs/default/bin/clang++)
+set(CMAKE_LINKER ${CMAKE_CURRENT_SOURCE_DIR}/.pixi/envs/default/bin/ld.lld)
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=lld")

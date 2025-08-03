@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+# pixi environments
+.pixi
+
+build
+
+.cache

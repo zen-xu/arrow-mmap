@@ -174,6 +174,10 @@ public:
 
   MmapReader reader(int mmap_flags = 0) {
     auto reader = MmapReader();
+    if (!std::filesystem::exists(file_)) {
+      quill::error(logger_, "file {} not exists", file_);
+      return reader;
+    }
 
     if (!init_fd()) {
       return reader;

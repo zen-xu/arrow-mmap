@@ -57,7 +57,7 @@ public:
   void *mmap_addr() const { return fd_->mmap_addr; }
 
 private:
-  std::shared_ptr<MmapFD> fd_;
+  std::shared_ptr<MmapFD> fd_ = nullptr;
 
   friend class MmapManager;
   MmapWriter() : fd_(nullptr) {}
@@ -86,7 +86,7 @@ public:
   }
 
 private:
-  std::shared_ptr<MmapFD> fd_;
+  std::shared_ptr<MmapFD> fd_ = nullptr;
 
   friend class MmapManager;
   explicit MmapReader() : fd_(nullptr) {}
@@ -223,7 +223,7 @@ public:
 
 private:
   std::string file_;
-  quill::Logger *logger_;
+  quill::Logger *logger_ = nullptr;
   std::shared_ptr<MmapFD> reader_fd_ = nullptr;
   std::shared_ptr<MmapFD> writer_fd_ = nullptr;
 };

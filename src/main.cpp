@@ -26,15 +26,15 @@ int main() {
       "default",
       quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
   auto db = mmap_db::PartitionDB<std::tuple<Data0, Data1>>("db");
+  quill::info(logger, "init db");
   db.create(100);
-
-  quill::info(logger, "init writer");
 
   auto writer0 = db.writer<0>();
   auto writer1 = db.writer<1>();
-  // INSERT_YOUR_CODE
+  quill::info(logger, "init writer");
 
   auto reader = db.reader();
+  quill::info(logger, "init reader");
 
   writer0.write({1, 2, 3, 4});
   quill::info(logger, "mask buffer: {}", reader.mask_buffer_string());

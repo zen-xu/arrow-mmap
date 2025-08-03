@@ -19,10 +19,10 @@ template <typename Tuple, std::size_t N>
           }(std::make_index_sequence<std::tuple_size<Tuple>::value>{}))
 class PartitionDBWriter {
 public:
-  PartitionDBWriter(std::string data_path, std::string mask_path,
+  PartitionDBWriter(MmapWriter data_writer, MmapWriter mask_writer,
                     size_t capacity)
-      : data_writer_(MmapManager(data_path).writer()),
-        mask_writer_(MmapManager(mask_path).writer()), capacity_(capacity) {
+      : data_writer_(data_writer), mask_writer_(mask_writer),
+        capacity_(capacity) {
     logger_ = quill::Frontend::create_or_get_logger("default");
   }
 
@@ -60,10 +60,10 @@ template <typename Tuple>
   }(std::make_index_sequence<std::tuple_size<Tuple>::value>{}))
 class PartitionDBReader {
 public:
-  PartitionDBReader(std::string data_path, std::string mask_path,
+  PartitionDBReader(MmapReader data_reader, MmapReader mask_reader,
                     size_t capacity)
-      : data_reader_(MmapManager(data_path).reader()),
-        mask_reader_(MmapManager(mask_path).reader()), capacity_(capacity) {
+      : data_reader_(data_reader), mask_reader_(mask_reader),
+        capacity_(capacity) {
     logger_ = quill::Frontend::create_or_get_logger("default");
   }
 
@@ -118,9 +118,12 @@ template <typename Tuple>
   }(std::make_index_sequence<std::tuple_size<Tuple>::value>{}))
 class PartitionDB {
 public:
-  PartitionDB(const std::string &path)
+  PartitionDB(const std::string &path, int reader_flags = 0,
+              int writer_flags = 0)
       : path_(path), data_path_(std::filesystem::path(path) / "data.mmap"),
-        mask_path_(std::filesystem::path(path) / "mask.mmap") {}
+        mask_path_(std::filesystem::path(path) / "mask.mmap"),
+        data_manager_(data_path_, reader_flags, writer_flags),
+        mask_manager_(mask_path_, reader_flags, writer_flags) {}
 
   size_t capacity() const {
     if (!std::filesystem::exists(mask_path_)) {
@@ -138,15 +141,13 @@ public:
 
   bool create(size_t capacity) {
     auto create_file = [&]() -> bool {
-      auto data_manager = MmapManager(data_path_);
       auto data_file_length = capacity * sizeof(Tuple);
-      if (!data_manager.truncate(data_file_length, true)) {
+      if (!truncate(data_path_, data_file_length, true)) {
         return false;
       }
-      auto mask_manager = MmapManager(mask_path_);
       auto mask_file_length =
           capacity * sizeof(bool) * std::tuple_size<Tuple>::value;
-      if (!mask_manager.truncate(mask_file_length, true)) {
+      if (!truncate(mask_path_, mask_file_length, true)) {
         return false;
       }
       return true;
@@ -163,17 +164,21 @@ public:
   template <std::size_t N>
     requires(N < std::tuple_size<Tuple>::value)
   PartitionDBWriter<Tuple, N> writer() {
-    return PartitionDBWriter<Tuple, N>(data_path_, mask_path_, capacity());
+    return PartitionDBWriter<Tuple, N>(data_manager_.writer(),
+                                       mask_manager_.writer(), capacity());
   }
 
   PartitionDBReader<Tuple> reader() {
-    return PartitionDBReader<Tuple>(data_path_, mask_path_, capacity());
+    return PartitionDBReader<Tuple>(data_manager_.reader(),
+                                    mask_manager_.reader(), capacity());
   }
 
 private:
   std::string path_;
   std::string data_path_;
   std::string mask_path_;
+  MmapManager data_manager_;
+  MmapManager mask_manager_;
 };
 } // namespace mmap_db
 #endif

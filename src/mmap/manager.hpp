@@ -21,6 +21,71 @@ inline size_t get_length(int fd) {
   return st.st_size;
 }
 
+inline bool truncate(const std::string &file, size_t length,
+                     bool fill_zero = false) {
+  quill::Logger *logger = quill::Frontend::create_or_get_logger("default");
+
+  std::filesystem::path file_dir = std::filesystem::path(file).parent_path();
+
+  if (!std::filesystem::exists(file_dir)) {
+    std::filesystem::create_directories(file_dir);
+  }
+
+  if (length == 0) {
+    quill::error(logger, "can't truncate to 0 length");
+    return false;
+  }
+
+  const std::string truncate_file =
+      std::filesystem::exists(file) ? file : file + ".tmp";
+  int oflag =
+      std::filesystem::exists(file) ? O_RDWR : O_RDWR | O_CREAT | O_TRUNC;
+  int fd =
+      open(truncate_file.c_str(), oflag, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  if (-1 == fd) {
+    quill::error(logger, "failed to open {}: {}", truncate_file,
+                 strerror(errno));
+    return false;
+  }
+
+  if (-1 == ftruncate(fd, length)) {
+    quill::error(logger, "fail to truncate {}: {}", truncate_file,
+                 strerror(errno));
+    close(fd);
+    return false;
+  }
+
+  int origin_length = get_length(fd);
+  if (fill_zero && origin_length < length) {
+    void *addr =
+        ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED) {
+      quill::error(logger, "failed to mmap {}: {}", truncate_file,
+                   strerror(errno));
+      close(fd);
+      return false;
+    }
+    std::memset(static_cast<char *>(addr) + origin_length, 0,
+                length - origin_length);
+    munmap(addr, length);
+  }
+
+  if (-1 == close(fd)) {
+    quill::error(logger, "failed to close {}: {}", truncate_file,
+                 strerror(errno));
+    return false;
+  }
+
+  if (truncate_file != file) {
+    if (-1 == rename(truncate_file.c_str(), file.c_str())) {
+      quill::error(logger, "failed to move {} to {}: {}", truncate_file, file,
+                   strerror(errno));
+      return false;
+    }
+  }
+  return true;
+}
+
 class MmapWriter {
 public:
   MmapWriter(int fd, void *mmap_addr, size_t length)
@@ -88,67 +153,6 @@ public:
     logger_ = quill::Frontend::create_or_get_logger("default");
   }
 
-  bool truncate(size_t length, bool fill_zero = false) {
-    std::filesystem::path file_dir = std::filesystem::path(file_).parent_path();
-    if (!std::filesystem::exists(file_dir)) {
-      std::filesystem::create_directories(file_dir);
-    }
-
-    if (length == 0) {
-      quill::error(logger_, "can't truncate to 0 length");
-      return false;
-    }
-
-    const std::string truncate_file =
-        std::filesystem::exists(file_) ? file_ : file_ + ".tmp";
-    int oflag =
-        std::filesystem::exists(file_) ? O_RDWR : O_RDWR | O_CREAT | O_TRUNC;
-    int fd = open(truncate_file.c_str(), oflag,
-                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (-1 == fd) {
-      quill::error(logger_, "failed to open {}: {}", truncate_file,
-                   strerror(errno));
-      return false;
-    }
-
-    if (-1 == ftruncate(fd, length)) {
-      quill::error(logger_, "fail to truncate {}: {}", truncate_file,
-                   strerror(errno));
-      close(fd);
-      return false;
-    }
-
-    int origin_length = get_length(fd);
-    if (fill_zero && origin_length < length) {
-      void *addr =
-          ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-      if (addr == MAP_FAILED) {
-        quill::error(logger_, "failed to mmap {}: {}", truncate_file,
-                     strerror(errno));
-        close(fd);
-        return false;
-      }
-      std::memset(static_cast<char *>(addr) + origin_length, 0,
-                  length - origin_length);
-      munmap(addr, length);
-    }
-
-    if (-1 == close(fd)) {
-      quill::error(logger_, "failed to close {}: {}", truncate_file,
-                   strerror(errno));
-      return false;
-    }
-
-    if (truncate_file != file_) {
-      if (-1 == rename(truncate_file.c_str(), file_.c_str())) {
-        quill::error(logger_, "failed to move {} to {}: {}", truncate_file,
-                     file_, strerror(errno));
-        return false;
-      }
-    }
-    return true;
-  }
-
   MmapWriter writer() {
     MmapWriter writer;
     if (!init_fd()) {
@@ -190,12 +194,15 @@ public:
 
   ~MmapManager() {
     if (mmap_reader_addr_ != nullptr) {
+      quill::debug(logger_, "unmap reader {}", file_);
       munmap(mmap_reader_addr_, length_);
     }
     if (mmap_writer_addr_ != nullptr) {
+      quill::debug(logger_, "unmap writer {}", file_);
       munmap(mmap_writer_addr_, length_);
     }
     if (fd_ != -1) {
+      quill::debug(logger_, "close fd");
       close(fd_);
     }
   }

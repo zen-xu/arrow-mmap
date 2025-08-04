@@ -147,7 +147,12 @@ class PartitionDB {
     return length / (sizeof(bool) * std::tuple_size<Tuple>::value);
   }
 
-  bool truncate_or_create(size_t capacity) {
+  bool truncate_or_create(size_t capacity, bool clear = false) {
+    if (clear) {
+      std::filesystem::remove(data_path_);
+      std::filesystem::remove(mask_path_);
+    }
+
     auto create_file = [&]() -> bool {
       auto data_file_length = capacity * sizeof(Tuple);
       if (!truncate(data_path_, data_file_length, true)) {

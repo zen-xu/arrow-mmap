@@ -32,11 +32,13 @@ class PartitionDBWriter {
       return false;
     }
 
+    static constexpr size_t tuple_value = std::tuple_size<Tuple>::value;
+
     auto data_tuple_array = reinterpret_cast<Tuple*>(data_writer_.mmap_addr());
     std::get<N>(data_tuple_array[index]) = data;
 
-    auto mask_tuple_array = reinterpret_cast<bool*>(mask_writer_.mmap_addr());
-    mask_tuple_array[index * tuple_count_ + N] = true;
+    auto mask_tuple_array = mask_writer_.mmap_addr();
+    mask_tuple_array[index * tuple_value + N] = std::byte(0xFF);
 
     return true;
   }
@@ -44,14 +46,13 @@ class PartitionDBWriter {
   std::string mask_buffer_string() {
     auto mask_addr = mask_writer_.mmap_addr();
     auto mask_size = mask_writer_.length();
-    auto mask_count = mask_size / sizeof(bool);
-    auto mask_ptr = reinterpret_cast<bool*>(mask_addr);
+    auto mask_count = mask_size / sizeof(std::byte);
+    auto mask_ptr = reinterpret_cast<char*>(mask_addr);
     return std::string(mask_ptr, mask_ptr + mask_count);
   }
 
  private:
   static constexpr size_t tuple_size_ = sizeof(Tuple);
-  static constexpr size_t tuple_count_ = std::tuple_size<Tuple>::value;
 
   size_t index_ = 0;
   size_t capacity_ = 0;
@@ -81,14 +82,14 @@ class PartitionDBReader {
       return nullptr;
     }
 
-    if (!mask_reader_.read(&mask_buffer_, sizeof(mask_buffer_), index * sizeof(mask_buffer_))) {
+    constexpr size_t mask_size = std::tuple_size<Tuple>::value * sizeof(std::byte);
+    auto mask_addr = mask_reader_.read(mask_size, index * mask_size);
+    if (mask_addr == nullptr) {
       return nullptr;
     }
-
-    if (!std::all_of(std::begin(mask_buffer_), std::end(mask_buffer_), [](bool b) { return b; })) {
+    if (!std::all_of(mask_addr, mask_addr + mask_size, [](std::byte b) { return b == std::byte(0xFF); })) {
       return nullptr;
     }
-
     auto data = data_reader_.read(sizeof(Tuple), sizeof(Tuple) * index);
     if (data == nullptr) {
       return nullptr;
@@ -100,17 +101,14 @@ class PartitionDBReader {
   std::string mask_buffer_string() {
     auto mask_addr = mask_reader_.mmap_addr();
     auto mask_size = mask_reader_.length();
-    auto mask_count = mask_size / sizeof(bool);
-    auto mask_ptr = reinterpret_cast<bool*>(mask_addr);
+    auto mask_count = mask_size / sizeof(std::byte);
+    auto mask_ptr = reinterpret_cast<char*>(mask_addr);
     return std::string(mask_ptr, mask_ptr + mask_count);
   }
-
-  void* data_addr() { return data_reader_.mmap_addr(); }
 
  private:
   size_t capacity_ = 0;
   size_t index_ = 0;
-  bool mask_buffer_[std::tuple_size<Tuple>::value] = {false};
   MmapReader data_reader_;
   MmapReader mask_reader_;
 };
@@ -143,7 +141,7 @@ class PartitionDB {
     auto length = static_cast<size_t>(st.st_size);
     close(fd);
 
-    return length / (sizeof(bool) * std::tuple_size<Tuple>::value);
+    return length / (sizeof(std::byte) * std::tuple_size<Tuple>::value);
   }
 
   bool truncate_or_create(size_t capacity, bool clear = false) {
@@ -157,7 +155,7 @@ class PartitionDB {
       if (!truncate(data_path_, data_file_length, true)) {
         return false;
       }
-      auto mask_file_length = capacity * sizeof(bool) * std::tuple_size<Tuple>::value;
+      auto mask_file_length = capacity * sizeof(std::byte) * std::tuple_size<Tuple>::value;
       if (!truncate(mask_path_, mask_file_length, true)) {
         return false;
       }

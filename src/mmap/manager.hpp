@@ -67,7 +67,7 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
 
 class MmapWriter {
  public:
-  MmapWriter(int fd, void* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapWriter(int fd, std::byte* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
   MmapWriter() = default;
 
   size_t length() const { return length_; }
@@ -79,32 +79,32 @@ class MmapWriter {
     if (mmap_offset + buf_n > length_) {
       return false;
     }
-    std::memcpy(static_cast<char*>(mmap_addr_) + mmap_offset, buf, buf_n);
+    std::memcpy(mmap_addr_ + mmap_offset, buf, buf_n);
     return true;
   }
 
-  void* mmap_addr() const { return mmap_addr_; }
+  std::byte* mmap_addr() const { return static_cast<std::byte*>(mmap_addr_); }
 
  private:
   int length_ = 0;
   int fd_ = -1;
-  void* mmap_addr_ = nullptr;
+  std::byte* mmap_addr_ = nullptr;
 };
 
 class MmapReader {
  public:
-  MmapReader(int fd, void* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapReader(int fd, std::byte* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
   MmapReader() = default;
 
   size_t length() const { return length_; }
 
-  void* mmap_addr() const { return mmap_addr_; }
+  std::byte* mmap_addr() const { return mmap_addr_; }
 
-  void* read(size_t data_size, size_t mmap_offset) {
+  std::byte* read(size_t data_size, size_t mmap_offset) {
     if (mmap_offset + data_size > length_) {
       return nullptr;
     }
-    return static_cast<char*>(mmap_addr_) + mmap_offset;
+    return mmap_addr_ + mmap_offset;
   }
 
   bool read(void* buf, size_t buf_n, size_t mmap_offset) {
@@ -119,7 +119,7 @@ class MmapReader {
  private:
   int length_ = 0;
   int fd_ = -1;
-  void* mmap_addr_ = nullptr;
+  std::byte* mmap_addr_ = nullptr;
 };
 
 class MmapManager {
@@ -138,7 +138,7 @@ class MmapManager {
       if (addr == MAP_FAILED) {
         return writer;
       }
-      mmap_writer_addr_ = addr;
+      mmap_writer_addr_ = static_cast<std::byte*>(addr);
     }
 
     return MmapWriter(fd_, mmap_writer_addr_, length_);
@@ -159,7 +159,7 @@ class MmapManager {
       if (addr == MAP_FAILED) {
         return reader;
       }
-      mmap_reader_addr_ = addr;
+      mmap_reader_addr_ = static_cast<std::byte*>(addr);
     }
 
     return MmapReader(fd_, mmap_reader_addr_, length_);
@@ -203,8 +203,8 @@ class MmapManager {
   size_t length_ = 0;
   int reader_flags_ = 0;
   int writer_flags_ = 0;
-  void* mmap_reader_addr_ = nullptr;
-  void* mmap_writer_addr_ = nullptr;
+  std::byte* mmap_reader_addr_ = nullptr;
+  std::byte* mmap_writer_addr_ = nullptr;
 };
 }  // namespace mmap_db
 #endif  // MMAP_MANAGER_HPP

@@ -45,10 +45,13 @@ int main() {
 
   if (nullptr != data) {
     quill::info(logger, "total size: {}", sizeof(*data));
-    auto data0 = std::get<0>(*data);
-    auto data1 = std::get<1>(*data);
-    quill::info(logger, "data0: {}", data0.string());
-    quill::info(logger, "data1: {}", data1.string());
+    auto& data0 = std::get<0>(*data);
+    auto& data1 = std::get<1>(*data);
+    quill::info(logger, "data0: {}, data1: {}", data0.string(), data1.string());
+
+    quill::info(logger, "rewrite data0");
+    writer0.write({123, 2, 3, 4}, 0);
+    quill::info(logger, "data0: {}, data1: {}", data0.string(), data1.string());
   }
 
   quill::Backend::stop();

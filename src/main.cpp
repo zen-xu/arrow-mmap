@@ -37,12 +37,12 @@ int main() {
   quill::info(logger, "writer0 mask buffer: {}", writer0.mask_buffer_string());
 
   auto data = reader.read(0);
-  quill::info(logger, "data is nullptr: {}", data == nullptr);
+  quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
   quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
 
   writer1.write({5, 6, 7});
   quill::info(logger, "writer1 mask buffer: {}", writer1.mask_buffer_string());
-  quill::info(logger, "data is nullptr: {}", data == nullptr);
+  quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
 
   if (nullptr != data) {
     quill::info(logger, "total size: {}", sizeof(*data));

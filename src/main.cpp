@@ -41,6 +41,7 @@ int main() {
   quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
 
   writer1.write({5, 6, 7});
+  data = reader.read(0);
   quill::info(logger, "writer1 mask buffer: {}", writer1.mask_buffer_string());
   quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
 

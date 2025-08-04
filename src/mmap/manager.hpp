@@ -7,6 +7,8 @@
 #include <string>
 
 #include <fcntl.h>
+#include <quill/Frontend.h>
+#include <quill/LogFunctions.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -20,6 +22,8 @@ inline size_t get_length(int fd) {
 }
 
 inline bool truncate(const std::string& file, size_t length, bool fill_zero = false) {
+  auto logger = quill::Frontend::create_or_get_logger("default");
+
   std::filesystem::path file_dir = std::filesystem::path(file).parent_path();
 
   if (!std::filesystem::exists(file_dir)) {
@@ -27,6 +31,7 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
   }
 
   if (length == 0) {
+    quill::error(logger, "can't truncate to 0 length");
     return false;
   }
 
@@ -34,10 +39,12 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
   int oflag = std::filesystem::exists(file) ? O_RDWR : O_RDWR | O_CREAT | O_TRUNC;
   int fd = open(truncate_file.c_str(), oflag, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (-1 == fd) {
+    quill::error(logger, "failed to open {}: {}", truncate_file, strerror(errno));
     return false;
   }
 
   if (-1 == ftruncate(fd, length)) {
+    quill::error(logger, "fail to truncate {}: {}", truncate_file, strerror(errno));
     close(fd);
     return false;
   }
@@ -46,6 +53,7 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
   if (fill_zero && origin_length < length) {
     void* addr = ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (addr == MAP_FAILED) {
+      quill::error(logger, "failed to mmap {}: {}", truncate_file, strerror(errno));
       close(fd);
       return false;
     }
@@ -54,11 +62,13 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
   }
 
   if (-1 == close(fd)) {
+    quill::error(logger, "failed to close {}: {}", truncate_file, strerror(errno));
     return false;
   }
 
   if (truncate_file != file) {
     if (-1 == rename(truncate_file.c_str(), file.c_str())) {
+      quill::error(logger, "failed to move {} to {}: {}", truncate_file, file, strerror(errno));
       return false;
     }
   }
@@ -125,7 +135,9 @@ class MmapReader {
 class MmapManager {
  public:
   explicit MmapManager(const std::string& file, int reader_flags = 0, int writer_flags = 0)
-      : file_(file), reader_flags_(reader_flags), writer_flags_(writer_flags) {}
+      : file_(file), reader_flags_(reader_flags), writer_flags_(writer_flags) {
+    logger_ = quill::Frontend::create_or_get_logger("default");
+  }
 
   MmapWriter writer() {
     MmapWriter writer;
@@ -136,6 +148,7 @@ class MmapManager {
     if (mmap_writer_addr_ == nullptr) {
       auto addr = ::mmap(NULL, length_, PROT_READ | PROT_WRITE, MAP_SHARED | writer_flags_, fd_, 0);
       if (addr == MAP_FAILED) {
+        quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
         return writer;
       }
       mmap_writer_addr_ = static_cast<std::byte*>(addr);
@@ -147,6 +160,7 @@ class MmapManager {
   MmapReader reader(int mmap_flags = 0) {
     auto reader = MmapReader();
     if (!std::filesystem::exists(file_)) {
+      quill::error(logger_, "file {} not exists", file_);
       return reader;
     }
 
@@ -157,6 +171,7 @@ class MmapManager {
     if (mmap_reader_addr_ == nullptr) {
       auto addr = ::mmap(NULL, length_, PROT_READ, MAP_SHARED | reader_flags_, fd_, 0);
       if (addr == MAP_FAILED) {
+        quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
         return reader;
       }
       mmap_reader_addr_ = static_cast<std::byte*>(addr);
@@ -167,12 +182,15 @@ class MmapManager {
 
   ~MmapManager() {
     if (mmap_reader_addr_ != nullptr) {
+      quill::debug(logger_, "unmap reader {}", file_);
       munmap(mmap_reader_addr_, length_);
     }
     if (mmap_writer_addr_ != nullptr) {
+      quill::debug(logger_, "unmap writer {}", file_);
       munmap(mmap_writer_addr_, length_);
     }
     if (fd_ != -1) {
+      quill::debug(logger_, "close {}", file_);
       close(fd_);
     }
   }
@@ -182,12 +200,14 @@ class MmapManager {
     if (-1 == fd_) {
       int fd = open(file_.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
       if (fd == -1) {
+        quill::error(logger_, "failed to open {}: {}", file_, strerror(errno));
         close(fd);
         return false;
       }
 
       size_t length = get_length(fd);
       if (length == 0) {
+        quill::error(logger_, "file {} is empty", file_);
         close(fd);
         return false;
       }
@@ -205,6 +225,7 @@ class MmapManager {
   int writer_flags_ = 0;
   std::byte* mmap_reader_addr_ = nullptr;
   std::byte* mmap_writer_addr_ = nullptr;
+  quill::Logger* logger_ = nullptr;
 };
 }  // namespace mmap_db
 #endif  // MMAP_MANAGER_HPP

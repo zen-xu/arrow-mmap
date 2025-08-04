@@ -4,6 +4,8 @@
 
 #include <algorithm>
 
+#include <quill/Frontend.h>
+#include <quill/LogFunctions.h>
 #include <sys/mman.h>
 
 #include "manager.hpp"
@@ -17,7 +19,9 @@ template <typename Tuple, std::size_t N>
 class PartitionDBWriter {
  public:
   PartitionDBWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t capacity)
-      : data_writer_(data_writer), mask_writer_(mask_writer), capacity_(capacity) {}
+      : data_writer_(data_writer), mask_writer_(mask_writer), capacity_(capacity) {
+    logger_ = quill::Frontend::create_or_get_logger("default");
+  }
 
   bool write(const std::tuple_element_t<N, Tuple>& data) {
     auto ret = write(data, index_);
@@ -29,6 +33,7 @@ class PartitionDBWriter {
 
   bool write(const std::tuple_element_t<N, Tuple>& data, size_t index) {
     if (index >= capacity_) {
+      quill::error(logger_, "failed to write: capacity reached");
       return false;
     }
 
@@ -50,6 +55,7 @@ class PartitionDBWriter {
   size_t capacity_ = 0;
   MmapWriter data_writer_;
   MmapWriter mask_writer_;
+  quill::Logger* logger_;
 };
 
 template <typename Tuple>
@@ -59,7 +65,9 @@ template <typename Tuple>
 class PartitionDBReader {
  public:
   PartitionDBReader(MmapReader data_reader, MmapReader mask_reader, size_t capacity, size_t index = 0)
-      : data_reader_(data_reader), mask_reader_(mask_reader), capacity_(capacity), index_(index) {}
+      : data_reader_(data_reader), mask_reader_(mask_reader), capacity_(capacity), index_(index) {
+    logger_ = quill::Frontend::create_or_get_logger("default");
+  }
 
   Tuple* read() {
     auto ret = read(index_);
@@ -71,6 +79,7 @@ class PartitionDBReader {
 
   Tuple* read(size_t index) {
     if (index >= capacity_) {
+      quill::error(logger_, "failed to read: index out of capacity {} >= {}", index, capacity_);
       return nullptr;
     }
 
@@ -95,6 +104,7 @@ class PartitionDBReader {
   size_t index_ = 0;
   MmapReader data_reader_;
   MmapReader mask_reader_;
+  quill::Logger* logger_;
 };
 
 struct PartitionDBConfig {

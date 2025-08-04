@@ -8,9 +8,7 @@
 struct Data0 {
   int a, b, c, d;
 
-  std::string string() {
-    return std::format("a: {}, b: {}, c: {}, d: {}", a, b, c, d);
-  }
+  std::string string() { return std::format("a: {}, b: {}, c: {}, d: {}", a, b, c, d); }
 };
 
 struct Data1 {
@@ -22,9 +20,8 @@ struct Data1 {
 
 int main() {
   quill::Backend::start();
-  auto logger = quill::Frontend::create_or_get_logger(
-      "default",
-      quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
+  auto logger =
+      quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
   auto db = mmap_db::PartitionDB<std::tuple<Data0, Data1>>("db");
   quill::info(logger, "init db");
   db.create(100);
@@ -44,6 +41,7 @@ int main() {
   quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
 
   writer1.write({5, 6, 7});
+  quill::info(logger, "writer1 mask buffer: {}", writer1.mask_buffer_string());
   data = reader.read(0);
   quill::info(logger, "data is nullptr: {}", data == nullptr);
 

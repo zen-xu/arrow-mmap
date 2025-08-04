@@ -42,7 +42,6 @@ int main() {
 
   writer1.write({5, 6, 7});
   quill::info(logger, "writer1 mask buffer: {}", writer1.mask_buffer_string());
-  data = reader.read(0);
   quill::info(logger, "data is nullptr: {}", data == nullptr);
 
   if (nullptr != data) {

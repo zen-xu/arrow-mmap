@@ -24,7 +24,7 @@ int main() {
       quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
   auto db = mmap_db::PartitionDB<std::tuple<Data0, Data1>>("db");
   quill::info(logger, "init db");
-  db.truncate_or_create(100);
+  db.truncate_or_create(100, true);
 
   quill::info(logger, "init writer");
   auto writer0 = db.writer<0>();
@@ -42,14 +42,23 @@ int main() {
   quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
 
   if (nullptr != data) {
-    quill::info(logger, "total size: {}", sizeof(*data));
     auto& data0 = std::get<0>(*data);
     auto& data1 = std::get<1>(*data);
-    quill::info(logger, "data0: {}, data1: {}", data0.string(), data1.string());
+    quill::info(logger, "idx 0 >> data0: {}, data1: {}", data0.string(), data1.string());
 
-    quill::info(logger, "writer0 rewrite at index0");
+    quill::info(logger, "idx 0 >> rewrite data0");
     writer0.write({123, 2, 3, 4}, 0);
-    quill::info(logger, "data0: {}, data1: {}", data0.string(), data1.string());
+    quill::info(logger, "idx 0 >> data0: {}, data1: {}", data0.string(), data1.string());
+  }
+
+  writer0.write({10, 11, 12, 13}, 1);
+  writer1.write({14, 15, 16}, 1);
+  data = reader.read();  // skip index 0
+  data = reader.read();
+  if (nullptr != data) {
+    auto& data0 = std::get<0>(*data);
+    auto& data1 = std::get<1>(*data);
+    quill::info(logger, "idx 1 >> data0: {}, data1: {}", data0.string(), data1.string());
   }
 
   quill::Backend::stop();

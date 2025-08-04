@@ -24,7 +24,7 @@ int main() {
       quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
   auto db = mmap_db::PartitionDB<std::tuple<Data0, Data1>>("db");
   quill::info(logger, "init db");
-  db.create(100);
+  db.truncate_or_create(100);
 
   quill::info(logger, "init writer");
   auto writer0 = db.writer<0>();

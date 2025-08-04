@@ -1,0 +1,9 @@
+[
+    {
+        "name": "clang",
+        "compilers": {
+            "CC": "${workspaceFolder}/.pixi/envs/default/bin/clang",
+            "CXX": "${workspaceFolder}/.pixi/envs/default/bin/clang++"
+        }
+    }
+]

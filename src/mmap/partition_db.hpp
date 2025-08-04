@@ -113,18 +113,23 @@ class PartitionDBReader {
   quill::Logger* logger_;
 };
 
+struct PartitionDBConfig {
+  int reader_flags = 0;
+  int writer_flags = 0;
+};
+
 template <typename Tuple>
   requires ([]<std::size_t... I>(std::index_sequence<I...>) {
     return std::conjunction_v<std::is_standard_layout<std::tuple_element_t<I, Tuple>>...>;
   }(std::make_index_sequence<std::tuple_size<Tuple>::value>{}))
 class PartitionDB {
  public:
-  PartitionDB(const std::string& path, int reader_flags = 0, int writer_flags = 0)
+  PartitionDB(const std::string& path, PartitionDBConfig config = PartitionDBConfig())
       : path_(path),
         data_path_(std::filesystem::path(path) / "data.mmap"),
         mask_path_(std::filesystem::path(path) / "mask.mmap"),
-        data_manager_(data_path_, reader_flags, writer_flags),
-        mask_manager_(mask_path_, reader_flags, writer_flags) {}
+        data_manager_(data_path_, config.reader_flags, config.writer_flags),
+        mask_manager_(mask_path_, config.reader_flags, config.writer_flags) {}
 
   size_t capacity() const {
     if (!std::filesystem::exists(mask_path_)) {

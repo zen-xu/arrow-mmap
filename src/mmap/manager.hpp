@@ -185,7 +185,7 @@ public:
 
     if (mmap_reader_addr_ == nullptr) {
       auto addr =
-          ::mmap(NULL, length_, PROT_READ, MAP_PRIVATE | reader_flags_, fd_, 0);
+          ::mmap(NULL, length_, PROT_READ, MAP_SHARED | reader_flags_, fd_, 0);
       if (addr == MAP_FAILED) {
         quill::error(logger_, "failed to mmap {}: {}", file_, strerror(errno));
         return reader;

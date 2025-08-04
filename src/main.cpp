@@ -43,20 +43,18 @@ int main() {
   quill::info(logger, "data is nullptr: {}", data == nullptr);
   quill::info(logger, "mask buffer: {}", reader.mask_buffer_string());
 
+  writer1.write({5, 6, 7});
+  data = reader.read(0);
+  quill::info(logger, "data is nullptr: {}", data == nullptr);
+
+  if (nullptr != data) {
+    quill::info(logger, "total size: {}", sizeof(*data));
+    auto data0 = std::get<0>(*data);
+    auto data1 = std::get<1>(*data);
+    quill::info(logger, "data0: {}", data0.string());
+    quill::info(logger, "data1: {}", data1.string());
+  }
+
+  quill::Backend::stop();
   return 0;
-
-  // writer1.write({5, 6, 7});
-  // data = reader.read(0);
-  // quill::info(logger, "data is nullptr: {}", data == nullptr);
-
-  // if (nullptr != data) {
-  //   quill::info(logger, "total size: {}", sizeof(*data));
-  //   auto data0 = std::get<0>(*data);
-  //   auto data1 = std::get<1>(*data);
-  //   quill::info(logger, "data0: {}", data0.string());
-  //   quill::info(logger, "data1: {}", data1.string());
-  // }
-
-  // quill::Backend::stop();
-  // return 0;
 }

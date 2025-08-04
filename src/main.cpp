@@ -35,12 +35,10 @@ int main() {
 
   writer0.write({1, 2, 3, 4});
   auto data = reader.read(0);
-  quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
   quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
 
   writer1.write({5, 6, 7});
   data = reader.read(0);
-  quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
   quill::info(logger, "data {} nullptr", data == nullptr ? "==" : "!=");
 
   if (nullptr != data) {

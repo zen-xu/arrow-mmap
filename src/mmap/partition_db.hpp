@@ -43,14 +43,6 @@ class PartitionDBWriter {
     return true;
   }
 
-  std::string mask_buffer_string() {
-    auto mask_addr = mask_writer_.mmap_addr();
-    auto mask_size = mask_writer_.length();
-    auto mask_count = mask_size / sizeof(std::byte);
-    auto mask_ptr = reinterpret_cast<char*>(mask_addr);
-    return std::string(mask_ptr, mask_ptr + mask_count);
-  }
-
  private:
   static constexpr size_t tuple_size_ = sizeof(Tuple);
 
@@ -96,14 +88,6 @@ class PartitionDBReader {
     }
 
     return reinterpret_cast<Tuple*>(data);
-  }
-
-  std::string mask_buffer_string() {
-    auto mask_addr = mask_reader_.mmap_addr();
-    auto mask_size = mask_reader_.length();
-    auto mask_count = mask_size / sizeof(std::byte);
-    auto mask_ptr = reinterpret_cast<char*>(mask_addr);
-    return std::string(mask_ptr, mask_ptr + mask_count);
   }
 
  private:

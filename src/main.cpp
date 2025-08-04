@@ -37,11 +37,11 @@ int main() {
   auto reader = db.reader();
 
   writer0.write({1, 2, 3, 4});
-  quill::info(logger, "mask buffer: {}", writer0.mask_buffer_string());
+  quill::info(logger, "writer0 mask buffer: {}", writer0.mask_buffer_string());
 
   auto data = reader.read(0);
   quill::info(logger, "data is nullptr: {}", data == nullptr);
-  quill::info(logger, "mask buffer: {}", reader.mask_buffer_string());
+  quill::info(logger, "reader mask buffer: {}", reader.mask_buffer_string());
 
   writer1.write({5, 6, 7});
   data = reader.read(0);

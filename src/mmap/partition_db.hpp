@@ -65,8 +65,16 @@ template <typename Tuple>
   }(std::make_index_sequence<std::tuple_size<Tuple>::value>{}))
 class PartitionDBReader {
  public:
-  PartitionDBReader(MmapReader data_reader, MmapReader mask_reader, size_t capacity)
-      : data_reader_(data_reader), mask_reader_(mask_reader), capacity_(capacity) {}
+  PartitionDBReader(MmapReader data_reader, MmapReader mask_reader, size_t capacity, size_t index = 0)
+      : data_reader_(data_reader), mask_reader_(mask_reader), capacity_(capacity), index_(index) {}
+
+  Tuple* read() {
+    auto ret = read(index_);
+    if (ret) {
+      index_++;
+    }
+    return ret;
+  }
 
   Tuple* read(size_t index) {
     if (index >= capacity_) {
@@ -97,8 +105,11 @@ class PartitionDBReader {
     return std::string(mask_ptr, mask_ptr + mask_count);
   }
 
+  void* data_addr() { return data_reader_.mmap_addr(); }
+
  private:
   size_t capacity_ = 0;
+  size_t index_ = 0;
   bool mask_buffer_[std::tuple_size<Tuple>::value] = {false};
   MmapReader data_reader_;
   MmapReader mask_reader_;

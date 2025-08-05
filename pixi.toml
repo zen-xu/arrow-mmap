@@ -1,8 +1,8 @@
 [workspace]
 authors   = ["ZhengYu, Xu <zen-xu@outlook.com>"]
-channels  = ["conda-forge"]
+channels  = ["conda-forge", "https://repo.prefix.dev/cxxlibs"]
 name      = "mmap_db"
-platforms = ["osx-64", "linux-64"]
+platforms = ["linux-64"]
 version   = "0.1.0"
 
 [tasks]

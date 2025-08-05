@@ -61,7 +61,6 @@ static void BM_DynWritePerformance2(benchmark::State& state) {
 
 // 注册基准测试
 // BENCHMARK(BM_WritePerformance)->Iterations(100);
-// BENCHMARK(BM_DynWritePerformance)->Iterations(100000000);
 BENCHMARK(BM_DynWritePerformance)->Iterations(100000000);
 BENCHMARK(BM_DynWritePerformance2)->Iterations(100000000);
 

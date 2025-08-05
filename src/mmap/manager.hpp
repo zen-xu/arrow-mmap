@@ -77,15 +77,12 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
 
 class MmapWriter {
  public:
-  MmapWriter(int fd, std::byte* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapWriter(std::byte* mmap_addr, size_t length) : mmap_addr_(mmap_addr), length_(length) {}
   MmapWriter() = default;
 
   size_t length() const { return length_; }
 
   bool write(const void* buf, size_t buf_n, size_t mmap_offset) {
-    if (-1 == fd_) {
-      return false;
-    }
     if (mmap_offset + buf_n > length_) {
       return false;
     }
@@ -97,13 +94,12 @@ class MmapWriter {
 
  private:
   int length_ = 0;
-  int fd_ = -1;
   std::byte* mmap_addr_ = nullptr;
 };
 
 class MmapReader {
  public:
-  MmapReader(int fd, std::byte* mmap_addr, size_t length) : fd_(fd), mmap_addr_(mmap_addr), length_(length) {}
+  MmapReader(std::byte* mmap_addr, size_t length) : mmap_addr_(mmap_addr), length_(length) {}
   MmapReader() = default;
 
   size_t length() const { return length_; }
@@ -128,7 +124,6 @@ class MmapReader {
 
  private:
   int length_ = 0;
-  int fd_ = -1;
   std::byte* mmap_addr_ = nullptr;
 };
 
@@ -155,10 +150,10 @@ class MmapManager {
       mmap_writer_addr_ = static_cast<std::byte*>(addr);
     }
 
-    return MmapWriter(fd_, mmap_writer_addr_, length_);
+    return MmapWriter(mmap_writer_addr_, length_);
   }
 
-  MmapReader reader(int mmap_flags = 0) {
+  MmapReader reader() {
     auto reader = MmapReader();
     if (!std::filesystem::exists(file_)) {
       quill::error(logger_, "file {} not exists", file_);
@@ -179,7 +174,7 @@ class MmapManager {
       mmap_reader_addr_ = static_cast<std::byte*>(addr);
     }
 
-    return MmapReader(fd_, mmap_reader_addr_, length_);
+    return MmapReader(mmap_reader_addr_, length_);
   }
 
   ~MmapManager() {

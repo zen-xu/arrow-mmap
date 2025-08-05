@@ -29,20 +29,20 @@ class DynPartitionDBWriter {
         capacity_(capacity),
         logger_(logger) {}
 
-  bool write(const void* data) {
-    auto ret = write(data, index_);
+  bool write(const void* partition_data) {
+    auto ret = write(partition_data, index_);
     if (ret) {
       index_++;
     }
     return ret;
   }
 
-  bool write(const void* data, size_t index) {
+  bool write(const void* partition_data, size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to write: index out of capacity {} >= {}", index, capacity_);
       return false;
     }
-    if (!data_writer_.write(data, partition_size_, index * chunk_size_ + partition_offset_)) {
+    if (!data_writer_.write(partition_data, partition_size_, index * chunk_size_ + partition_offset_)) {
       return false;
     }
     auto mask_addr = mask_writer_.mmap_addr();

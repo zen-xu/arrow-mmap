@@ -23,15 +23,15 @@ class PartitionDBWriter {
     logger_ = quill::Frontend::create_or_get_logger("default");
   }
 
-  bool write(const std::tuple_element_t<N, Tuple>& data) {
-    auto ret = write(data, index_);
+  bool write(const std::tuple_element_t<N, Tuple>& partition_data) {
+    auto ret = write(partition_data, index_);
     if (ret) {
       index_++;
     }
     return ret;
   }
 
-  bool write(const std::tuple_element_t<N, Tuple>& data, size_t index) {
+  bool write(const std::tuple_element_t<N, Tuple>& partition_data, size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to write: capacity reached");
       return false;
@@ -40,7 +40,7 @@ class PartitionDBWriter {
     static constexpr size_t tuple_value = std::tuple_size<Tuple>::value;
 
     auto data_tuple_array = reinterpret_cast<Tuple*>(data_writer_.mmap_addr());
-    std::get<N>(data_tuple_array[index]) = data;
+    std::get<N>(data_tuple_array[index]) = partition_data;
 
     auto mask_tuple_array = mask_writer_.mmap_addr();
     mask_tuple_array[index * tuple_value + N] = std::byte(0xFF);

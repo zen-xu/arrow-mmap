@@ -160,7 +160,7 @@ class DynPartitionDB {
 
     auto schema_manager = MmapManager(schema_path_);
     std::filesystem::remove(schema_path_);
-    if (!truncate(schema_path_, sizeof(size_t) * partition_sizes.size(), true)) {
+    if (!::mmap_db::truncate(schema_path_, sizeof(size_t) * partition_sizes.size(), true)) {
       quill::error(logger_, "fail to truncate schema: {}", schema_path_);
       return false;
     }
@@ -170,12 +170,12 @@ class DynPartitionDB {
     }
 
     partition_sizes_ = partition_sizes;
-    return truncate_or_create(capacity, true);
+    return truncate(capacity, true);
   }
 
-  bool truncate_or_create(size_t capacity, bool clear = false) {
+  bool truncate(size_t capacity, bool clear = false) {
     if (partition_sizes_.empty()) {
-      quill::error(logger_, "fail to truncate_or_create: partition_sizes is empty");
+      quill::error(logger_, "fail to truncate: partition_sizes is empty");
       return false;
     }
 
@@ -191,12 +191,12 @@ class DynPartitionDB {
 
     auto create_file = [&]() -> bool {
       auto data_file_length = capacity * chunk_size;
-      if (!truncate(data_path_, data_file_length, true)) {
+      if (!::mmap_db::truncate(data_path_, data_file_length, true)) {
         quill::error(logger_, "fail to truncate data: {}", data_path_);
         return false;
       }
       auto mask_file_length = capacity * sizeof(std::byte) * partition_sizes_.size();
-      if (!truncate(mask_path_, mask_file_length, true)) {
+      if (!::mmap_db::truncate(mask_path_, mask_file_length, true)) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
         return false;
       }

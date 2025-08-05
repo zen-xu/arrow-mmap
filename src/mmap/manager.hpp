@@ -142,6 +142,7 @@ class MmapManager {
   MmapWriter writer() {
     MmapWriter writer;
     if (!init_fd()) {
+      quill::error(logger_, "failed to init writer fd: {}", file_);
       return writer;
     }
 
@@ -165,6 +166,7 @@ class MmapManager {
     }
 
     if (!init_fd()) {
+      quill::error(logger_, "failed to init reader fd: {}", file_);
       return reader;
     }
 

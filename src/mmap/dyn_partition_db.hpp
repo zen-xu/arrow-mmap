@@ -29,7 +29,7 @@ class DynPartitionDBWriter {
         capacity_(capacity),
         logger_(logger) {}
 
-  bool write(const void* partition_data) {
+  inline bool write(const void* partition_data) {
     auto ret = write(partition_data, index_);
     if (ret) {
       index_++;
@@ -37,7 +37,7 @@ class DynPartitionDBWriter {
     return ret;
   }
 
-  bool write(const void* partition_data, size_t index) {
+  inline bool write(const void* partition_data, size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to write: index out of capacity {} >= {}", index, capacity_);
       return false;
@@ -49,6 +49,8 @@ class DynPartitionDBWriter {
     mask_addr[index * partition_count_ + partition_] = std::byte(0xFF);
     return true;
   }
+
+  std::byte* addr() { return data_writer_.mmap_addr(); }
 
  private:
   size_t index_ = 0;
@@ -74,7 +76,7 @@ class DynPartitionDBReader {
         partition_count_(partition_count_),
         logger_(logger) {}
 
-  std::byte* read() {
+  inline std::byte* read() {
     auto ret = read(index_);
     if (ret) {
       index_++;
@@ -82,7 +84,7 @@ class DynPartitionDBReader {
     return ret;
   }
 
-  std::byte* read(size_t index) {
+  inline std::byte* read(size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to read: index out of capacity {} >= {}", index, capacity_);
       return nullptr;

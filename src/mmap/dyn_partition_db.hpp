@@ -51,6 +51,7 @@ class DynPartitionDBWriter {
   }
 
   std::byte* addr() { return data_writer_.mmap_addr(); }
+  std::byte* addr(size_t index) { return data_writer_.mmap_addr() + index * chunk_size_ + partition_offset_; }
 
  private:
   size_t index_ = 0;

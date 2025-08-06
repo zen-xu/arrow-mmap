@@ -17,3 +17,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     mmap_db_lib)
 
 add_subdirectory(benchmark)
+add_subdirectory(demo)

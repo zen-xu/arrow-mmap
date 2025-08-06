@@ -2,6 +2,8 @@
 #define MMAP_DYN_PARTITION_DB_HPP
 #pragma once
 
+#include <numeric>
+
 #include <quill/Frontend.h>
 #include <quill/LogFunctions.h>
 
@@ -14,19 +16,32 @@ struct DynPartitionDBConfig {
   int writer_flags = 0;
 };
 
+// 只允许 Order 为 "C" 或 "F" 的辅助类型
+enum class DynPartitionOrder { C, F };
+
+template <DynPartitionOrder Order>
 class DynPartitionDBWriter {
  public:
-  DynPartitionDBWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t partition, size_t partition_size,
-                       size_t partition_offset, size_t partition_count, size_t chunk_size, size_t capacity,
-                       quill::Logger* logger)
+  DynPartitionDBWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t partition, size_t capacity,
+                       std::vector<size_t> partition_sizes, quill::Logger* logger)
       : data_writer_(data_writer),
         mask_writer_(mask_writer),
         partition_(partition),
-        partition_size_(partition_size),
-        partition_offset_(partition_offset),
-        partition_count_(partition_count),
-        chunk_size_(chunk_size),
+        partition_size_(partition_sizes[partition]),
+        partition_offset_(std::accumulate(partition_sizes.begin(), partition_sizes.begin() + partition, 0)),
+        partition_count_(partition_sizes.size()),
+        chunk_size_(std::accumulate(partition_sizes.begin(), partition_sizes.end(), 0)),
         capacity_(capacity),
+        f_order_offset_([partition_sizes, partition, capacity, logger]() {
+          if (Order == DynPartitionOrder::C) {
+            return 0;
+          }
+          auto ret = 0;
+          for (size_t i = 0; i < partition; i++) {
+            ret += partition_sizes[i] * capacity;
+          }
+          return ret;
+        }()),
         logger_(logger) {}
 
   inline bool write(const void* partition_data) {
@@ -42,8 +57,15 @@ class DynPartitionDBWriter {
       quill::error(logger_, "failed to write: index out of capacity {} >= {}", index, capacity_);
       return false;
     }
-    if (!data_writer_.write(partition_data, partition_size_, index * chunk_size_ + partition_offset_)) {
-      return false;
+
+    if (Order == DynPartitionOrder::C) {
+      if (!data_writer_.write(partition_data, partition_size_, index * chunk_size_ + partition_offset_)) {
+        return false;
+      }
+    } else {
+      if (!data_writer_.write(partition_data, partition_size_, f_order_offset_ + index * partition_size_)) {
+        return false;
+      }
     }
     auto mask_addr = mask_writer_.mmap_addr();
     mask_addr[index * partition_count_ + partition_] = std::byte(0xFF);
@@ -51,7 +73,13 @@ class DynPartitionDBWriter {
   }
 
   std::byte* addr() { return data_writer_.mmap_addr(); }
-  std::byte* addr(size_t index) { return data_writer_.mmap_addr() + index * chunk_size_ + partition_offset_; }
+  std::byte* addr(size_t index) {
+    if (Order == DynPartitionOrder::C) {
+      return data_writer_.mmap_addr() + index * chunk_size_ + partition_offset_;
+    } else {
+      return data_writer_.mmap_addr() + f_order_offset_ + index * partition_size_;
+    }
+  }
 
  private:
   size_t index_ = 0;
@@ -61,20 +89,26 @@ class DynPartitionDBWriter {
   size_t partition_offset_;
   size_t partition_count_;
   size_t chunk_size_;
+  size_t f_order_offset_ = 0;
+  std::vector<size_t> partition_sizes_;
   MmapWriter data_writer_;
   MmapWriter mask_writer_;
   quill::Logger* logger_;
 };
 
+template <DynPartitionOrder Order>
 class DynPartitionDBReader {
+  static_assert(Order == DynPartitionOrder::C, "DynPartitionDBReader currently only supports C order (not F order)");
+
  public:
-  DynPartitionDBReader(MmapReader data_reader, MmapReader mask_reader, size_t chunk_size, size_t capacity,
-                       size_t partition_count_, quill::Logger* logger)
+  DynPartitionDBReader(MmapReader data_reader, MmapReader mask_reader, size_t capacity,
+                       std::vector<size_t> partition_sizes, quill::Logger* logger)
       : data_reader_(data_reader),
         mask_reader_(mask_reader),
-        chunk_size_(chunk_size),
+        chunk_size_(std::accumulate(partition_sizes.begin(), partition_sizes.end(), 0)),
+        partition_sizes_(partition_sizes),
         capacity_(capacity),
-        partition_count_(partition_count_),
+        partition_count_(partition_sizes.size()),
         logger_(logger) {}
 
   inline std::byte* read() {
@@ -108,9 +142,11 @@ class DynPartitionDBReader {
   size_t partition_count_;
   MmapReader data_reader_;
   MmapReader mask_reader_;
+  std::vector<size_t> partition_sizes_;
   quill::Logger* logger_;
 };
 
+template <DynPartitionOrder Order>
 class DynPartitionDB {
  public:
   DynPartitionDB(const std::string& path, DynPartitionDBConfig config = DynPartitionDBConfig())
@@ -214,7 +250,7 @@ class DynPartitionDB {
     return true;
   }
 
-  DynPartitionDBWriter writer(size_t partition) {
+  DynPartitionDBWriter<Order> writer(size_t partition) {
     auto partition_offset = 0;
     for (size_t i = 0; i < partition; i++) {
       partition_offset += partition_sizes_[i];
@@ -223,17 +259,17 @@ class DynPartitionDB {
     for (size_t i = 0; i < partition_sizes_.size(); i++) {
       chunk_size += partition_sizes_[i];
     }
-    return DynPartitionDBWriter(data_manager_.writer(), mask_manager_.writer(), partition, partition_sizes_[partition],
-                                partition_offset, partition_sizes_.size(), chunk_size, capacity(), logger_);
+    return DynPartitionDBWriter<Order>(data_manager_.writer(), mask_manager_.writer(), partition, capacity(),
+                                       partition_sizes_, logger_);
   }
 
-  DynPartitionDBReader reader() {
+  DynPartitionDBReader<Order> reader() {
     auto chunk_size = 0;
     for (size_t i = 0; i < partition_sizes_.size(); i++) {
       chunk_size += partition_sizes_[i];
     }
-    return DynPartitionDBReader(data_manager_.reader(), mask_manager_.reader(), chunk_size, capacity(),
-                                partition_sizes_.size(), logger_);
+    return DynPartitionDBReader<Order>(data_manager_.reader(), mask_manager_.reader(), capacity(), partition_sizes_,
+                                       logger_);
   }
 
  private:

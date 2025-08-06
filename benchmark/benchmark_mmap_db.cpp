@@ -31,7 +31,7 @@ static void BM_WritePerformance(benchmark::State& state) {
 }
 
 static void BM_DynWritePerformance(benchmark::State& state) {
-  auto db = mmap_db::DynPartitionDB("benchmark_dyn_db");
+  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
   int capacity = 10;
   db.create(capacity, {sizeof(Data0)});
   auto writer = db.writer(0);
@@ -45,7 +45,7 @@ static void BM_DynWritePerformance(benchmark::State& state) {
 }
 
 static void BM_DynWritePerformance2(benchmark::State& state) {
-  auto db = mmap_db::DynPartitionDB("benchmark_dyn_db");
+  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
   int capacity = 10;
   db.create(capacity, {sizeof(Data0)});
   auto writer = db.writer(0);

@@ -71,7 +71,7 @@ int main() {
   auto logger =
       quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
   quill::info(logger, "init db");
-  auto db = mmap_db::DynPartitionDB("db");
+  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("db");
   db.create(100, {sizeof(Data0), sizeof(Data1)});
   quill::info(logger, "init writer");
 

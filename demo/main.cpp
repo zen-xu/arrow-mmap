@@ -25,12 +25,6 @@ int main() {
 
   Row row1{1, 'a'};
   Row row2{2, 'b'};
-  Row row3{3, 'c'};
-  Row row4{4, 'd'};
-  Row row5{5, 'e'};
-  Row row6{6, 'f'};
-  Row row7{7, 'g'};
-  Row row8{8, 'h'};
 
   auto writer0 = db.writer(0);
   auto writer1 = db.writer(1);

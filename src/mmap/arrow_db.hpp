@@ -2,8 +2,11 @@
 #define MMAP_DB_ARROW_DB_HPP
 
 #include <filesystem>
+#include <fstream>
 
 #include <arrow/api.h>
+#include <arrow/io/api.h>
+#include <arrow/ipc/api.h>
 
 #include "manager.hpp"
 
@@ -90,40 +93,27 @@ class ArrowDB {
   ArrowDB(const std::string& path, ArrowWriterConfig config = ArrowWriterConfig())
       : data_path_(std::filesystem::path(path) / "arrow_data.mmap"),
         mask_path_(std::filesystem::path(path) / "arrow_mask.mmap"),
-        schema_path_(std::filesystem::path(path) / "arrow_schema.mmap"),
+        schema_path_(std::filesystem::path(path) / "arrow_schema.bin"),
         data_manager_(data_path_, config.reader_flags, config.writer_flags),
         mask_manager_(mask_path_, config.reader_flags, config.writer_flags),
         logger_(quill::Frontend::create_or_get_logger("default")) {
     if (std::filesystem::exists(schema_path_)) {
-      auto schema_manager = MmapManager(schema_path_);
-      auto schema_reader = schema_manager.reader();
-
-      auto buf = reinterpret_cast<std::size_t*>(schema_reader.read(schema_reader.length(), 0));
-      if (nullptr != buf) {
-        for (size_t i = 0; i < schema_reader.length() / sizeof(std::size_t); i++) {
-          if (i == 0) {
-            writer_count_ = buf[i];
-          } else if (i == 1) {
-            rows_ = buf[i];
-          } else {
-            column_bit_widths_.push_back(buf[i]);
-          }
-        }
-      } else {
-        quill::error(logger_, "failed to read schema");
-      }
+      std::ifstream schema_ifs(schema_path_, std::ios::binary);
+      schema_ifs.read(reinterpret_cast<char*>(&writer_count_), sizeof(writer_count_));
+      schema_ifs.read(reinterpret_cast<char*>(&rows_), sizeof(rows_));
+      std::vector<char> schema_data_vec(std::istreambuf_iterator<char>(schema_ifs), {});
+      schema_ifs.close();
+      auto schema_buffer = ::arrow::Buffer::FromString(std::string(schema_data_vec.begin(), schema_data_vec.end()));
+      auto reader = ::arrow::io::BufferReader(schema_buffer);
+      schema_ = ::arrow::ipc::ReadSchema(&reader, nullptr).ValueOrDie();
     }
   }
+
+  size_t writer_count() const { return writer_count_; }
+  size_t rows() const { return rows_; }
+  std::shared_ptr<::arrow::Schema> schema() const { return schema_; }
 
   bool create(size_t writer_count, size_t rows, std::shared_ptr<::arrow::Schema> schema) {
-    std::vector<size_t> column_bit_widths;
-    for (auto field : schema->fields()) {
-      column_bit_widths.push_back(field->type()->byte_width());
-    }
-    return create(writer_count, rows, column_bit_widths);
-  }
-
-  bool create(size_t writer_count, size_t rows, std::vector<size_t> column_bit_widths) {
     if (writer_count == 0) {
       quill::error(logger_, "fail to create: writer_count can't be 0");
       return false;
@@ -132,8 +122,8 @@ class ArrowDB {
       quill::error(logger_, "fail to create: rows can't be 0");
       return false;
     }
-    if (column_bit_widths.empty()) {
-      quill::error(logger_, "fail to create: column_bit_widths can't be empty");
+    if (schema == nullptr) {
+      quill::error(logger_, "fail to create: schema can't be nullptr");
       return false;
     }
 
@@ -141,38 +131,47 @@ class ArrowDB {
     std::filesystem::remove(data_path_);
     std::filesystem::remove(mask_path_);
 
-    auto schema_manager = MmapManager(schema_path_);
-    // record schema
-    if (!::mmap_db::truncate(schema_path_,
-                             // init 2 is for writer_count and rows
-                             (column_bit_widths.size() + 2) * sizeof(size_t))) {
-      quill::error(logger_, "fail to truncate schema: {}", schema_path_);
+    auto path_dir = std::filesystem::path(schema_path_).parent_path();
+    if (!std::filesystem::exists(path_dir) && !std::filesystem::create_directories(path_dir)) {
+      quill::error(logger_, "failed to create directory: {}", path_dir.c_str());
       return false;
     }
 
-    auto schema_writer = schema_manager.writer();
-    schema_writer.write(&writer_count, sizeof(size_t), 0);
-    schema_writer.write(&rows, sizeof(size_t), 1 * sizeof(size_t));
-    for (size_t i = 0; i < column_bit_widths.size(); i++) {
-      schema_writer.write(&column_bit_widths[i], sizeof(size_t), (2 + i) * sizeof(size_t));
+    // dump schema
+    std::ofstream schema_ofs(schema_path_, std::ios::binary);
+    if (!schema_ofs) {
+      quill::error(logger_, "failed to open schema file for writing: {}", schema_path_);
+      return false;
+    } else {
+      auto schema_buffer = ::arrow::ipc::SerializeSchema(*schema).ValueOrDie();
+      size_t writer_count_val = writer_count;
+      size_t rows_val = rows;
+      schema_ofs.write(reinterpret_cast<const char*>(&writer_count_val), sizeof(size_t));
+      schema_ofs.write(reinterpret_cast<const char*>(&rows_val), sizeof(size_t));
+      schema_ofs.write(reinterpret_cast<const char*>(schema_buffer->data()), schema_buffer->size());
+      schema_ofs.close();
     }
-    writer_count_ = writer_count;
-    rows_ = rows;
-    column_bit_widths_ = column_bit_widths;
 
     // create data and mask file
     auto create_file = [&]() -> bool {
-      auto data_capacity = rows * writer_count *
-                           std::accumulate(column_bit_widths.begin(), column_bit_widths.end(), 0) * sizeof(std::byte);
+      auto data_capacity =
+          sizeof(std::byte) * rows * writer_count *
+          std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
+                          [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); });
       if (!::mmap_db::truncate(data_path_, data_capacity, true)) {
         quill::error(logger_, "fail to truncate data: {}", data_path_);
         return false;
       }
+
+      // make sure creating mask file is atomic operation
+      auto mask_tmp_path = mask_path_ + ".tmp";
       auto mask_capacity = rows * writer_count * sizeof(std::byte);
-      if (!::mmap_db::truncate(mask_path_, mask_capacity, true)) {
+      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, true)) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
+        std::filesystem::remove(mask_tmp_path);
         return false;
       }
+      std::filesystem::rename(mask_tmp_path, mask_path_);
       return true;
     };
     if (!create_file()) {
@@ -182,23 +181,22 @@ class ArrowDB {
       std::filesystem::remove(schema_path_);
       return false;
     }
+    writer_count_ = writer_count;
+    rows_ = rows;
+    schema_ = schema;
     return true;
   }
 
   ArrowWriter writer(size_t writer_id) {
     if (writer_id >= writer_count_) {
-      throw std::runtime_error("writer_id out of range");
+      throw std::runtime_error(std::format("writer_id out of range: {} >= {}", writer_id, writer_count_));
     }
-    return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, rows_, column_bit_widths_,
+    std::vector<size_t> column_bit_widths;
+    for (auto field : schema_->fields()) {
+      column_bit_widths.push_back(field->type()->byte_width());
+    }
+    return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, rows_, column_bit_widths,
                        writer_count_, logger_);
-  }
-
-  std::string info() {
-    auto info = std::format("writer_count: {}, rows: {}", writer_count_, rows_);
-    for (size_t i = 0; i < column_bit_widths_.size(); i++) {
-      info += std::format(", column_bit_widths[{}] = {}", i, column_bit_widths_[i]);
-    }
-    return info;
   }
 
  private:
@@ -209,9 +207,8 @@ class ArrowDB {
   size_t rows_ = 0;
   MmapManager data_manager_;
   MmapManager mask_manager_;
+  std::shared_ptr<::arrow::Schema> schema_ = nullptr;
   quill::Logger* logger_;
-
-  std::vector<size_t> column_bit_widths_ = {};
 };
 }  // namespace mmap_db::arrow
 

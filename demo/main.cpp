@@ -19,9 +19,9 @@ int main() {
       quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
 
   auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
-  auto rows = 4;
+  auto batch_count = 4;
   auto db = mmap_db::arrow::ArrowDB("arrow_db");
-  db.create(2, rows, schema);
+  db.create(2, batch_count, schema);
 
   auto writer0 = db.writer(0);
   auto writer1 = db.writer(1);

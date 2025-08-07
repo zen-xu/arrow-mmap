@@ -34,6 +34,16 @@ class ArrowWriter {
     }
   }
 
+  template <typename T>
+  bool write(const T& row_data) {
+    return write(reinterpret_cast<const void*>(&row_data));
+  }
+
+  template <typename T>
+  bool write(const T& row_data, size_t row_id) {
+    return write(reinterpret_cast<const void*>(&row_data), row_id);
+  }
+
   bool write(const void* row_data) {
     auto ret = write(row_data, row_id_);
     if (ret) {

@@ -23,21 +23,18 @@ int main() {
   auto db = mmap_db::arrow::ArrowDB("arrow_db");
   db.create(2, rows, schema);
 
-  Row row1{1, 'a'};
-  Row row2{2, 'b'};
-
   auto writer0 = db.writer(0);
   auto writer1 = db.writer(1);
   auto reader = db.reader();
 
-  writer0.write(&row1);
+  writer0.write(Row{1, 'a'});
   auto batch = reader.read();
   if (batch == nullptr) {
     quill::info(logger, "batch is nullptr");
   } else {
     quill::error(logger, "batch is not nullptr");
   }
-  writer1.write(&row2);
+  writer1.write(Row{2, 'b'});
 
   batch = reader.read();
   if (batch == nullptr) {

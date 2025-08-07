@@ -72,18 +72,5 @@ int main() {
     }
   }
 
-  // auto batch0 = make_record_batch(writer0, schema, rows);
-  // auto batch1 = make_record_batch(writer1, schema, rows);
-
-  // for (int i = 0; i < batch0->num_rows(); i++) {
-  //   auto id_scalar = batch0->column(0)->GetScalar(i).ValueOrDie();
-  //   auto name_scalar = batch0->column(1)->GetScalar(i).ValueOrDie();
-  //   quill::info(logger, "batch0 id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
-  // }
-  // for (int i = 0; i < batch1->num_rows(); i++) {
-  //   auto id_scalar = batch1->column(0)->GetScalar(i).ValueOrDie();
-  //   auto name_scalar = batch1->column(1)->GetScalar(i).ValueOrDie();
-  //   quill::info(logger, "batch1 id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
-  // }
   return 0;
 }

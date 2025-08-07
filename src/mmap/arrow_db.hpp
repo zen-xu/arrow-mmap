@@ -16,30 +16,23 @@ struct ArrowWriterConfig {
   int reader_flags = 0;
 };
 
-// 只允许 Order 为 "C" 或 "F" 的辅助类型
-enum class Order { C, F };
-
 class ArrowWriter {
  public:
   ArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t rows,
               std::vector<size_t> column_bit_widths, size_t writer_count, quill::Logger* logger)
       : data_writer_(data_writer),
         mask_writer_(mask_writer),
-        row_data_size_(std::accumulate(column_bit_widths.begin(), column_bit_widths.end(), 0)),
         writer_id_(writer_id),
         writer_count_(writer_count),
-        writer_data_addr_(data_writer_.mmap_addr() + writer_id * row_data_size_ * rows * sizeof(std::byte)),
         rows_(rows),
+        row_data_size_(std::accumulate(column_bit_widths.begin(), column_bit_widths.end(), 0) * writer_count),
         column_bit_widths_(column_bit_widths),
-        column_bit_offsets_([&]() {
-          std::vector<size_t> column_bit_offsets;
-          for (size_t i = 0; i < column_bit_widths.size(); i++) {
-            column_bit_offsets.push_back(std::accumulate(column_bit_widths.begin(), column_bit_widths.begin() + i, 0) *
-                                         rows);
-          }
-          return column_bit_offsets;
-        }()),
-        logger_(logger) {}
+        logger_(logger) {
+    for (size_t i = 0; i < column_bit_widths.size(); i++) {
+      column_bit_offsets_.push_back(std::accumulate(column_bit_widths.begin(), column_bit_widths.begin() + i, 0) *
+                                    writer_count);
+    }
+  }
 
   bool write(const void* row_data) {
     auto ret = write(row_data, row_id_);
@@ -49,16 +42,18 @@ class ArrowWriter {
     return ret;
   }
 
-  bool write(const void* row_data, size_t row_id) {
+  bool write(const void* row_part_data, size_t row_id) {
     if (row_id >= rows_) {
       quill::error(logger_, "failed to write: row_id {} >= total rows {}", row_id, rows_);
       return false;
     }
-
-    auto row_data_ptr = reinterpret_cast<const std::byte*>(row_data);
+    auto row_data_addr = data_writer_.mmap_addr() + (row_id * row_data_size_) * sizeof(std::byte);
+    auto row_data_ptr = reinterpret_cast<const std::byte*>(row_part_data);
     for (size_t col_id = 0; col_id < column_bit_widths_.size(); col_id++) {
       auto col_bit_width = column_bit_widths_[col_id];
-      memcpy(element_addr(row_id, col_id), row_data_ptr, col_bit_width * sizeof(std::byte));
+      auto col_addr = row_data_addr + column_bit_offsets_[col_id] * sizeof(std::byte);
+      auto col_worker_addr = col_addr + writer_id_ * col_bit_width * sizeof(std::byte);
+      memcpy(col_worker_addr, row_data_ptr, col_bit_width * sizeof(std::byte));
       row_data_ptr = row_data_ptr + col_bit_width * sizeof(std::byte);
     }
 
@@ -68,65 +63,73 @@ class ArrowWriter {
     return true;
   }
 
-  std::byte* col_addr(size_t col_id) { return element_addr(0, col_id); }
-
-  std::byte* element_addr(size_t row_id, size_t col_id) {
-    return writer_data_addr_ + column_bit_offsets_[col_id] * sizeof(std::byte) + row_id * column_bit_widths_[col_id];
-  }
-
  private:
   MmapWriter data_writer_;
   MmapWriter mask_writer_;
-  std::size_t row_data_size_;
-  std::byte* writer_data_addr_;
   size_t writer_id_;
   size_t writer_count_;
   size_t row_id_ = 0;
   size_t rows_;
-  std::vector<size_t> column_bit_widths_;
-  std::vector<size_t> column_bit_offsets_;
+  size_t row_data_size_;
+  std::vector<size_t> column_bit_widths_ = {};
+  std::vector<size_t> column_bit_offsets_ = {};
   quill::Logger* logger_;
 };
 
-// class ArrowReader {
-//  public:
-//   ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t rows,
-//               std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
-//       : data_reader_(data_reader),
-//         mask_reader_(mask_reader),
-//         writer_count_(writer_count),
-//         rows_(rows),
-//         schema_(schema),
-//         logger_(logger) {}
+class ArrowReader {
+ public:
+  ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t rows,
+              std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
+      : data_reader_(data_reader),
+        mask_reader_(mask_reader),
+        writer_count_(writer_count),
+        rows_(rows),
+        row_data_size_(
+            std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
+                            [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); })),
+        schema_(schema),
+        logger_(logger) {}
 
-//   std::shared_ptr<::arrow::RecordBatch> read() { return read(current_row_); }
-//   std::shared_ptr<::arrow::RecordBatch> read(size_t row) {
-//     if (row >= rows_) {
-//       quill::error(logger_, "failed to read: row {} >= max row {}", row, rows_);
-//       return nullptr;
-//     }
-//     auto mask_chunk_size = sizeof(std::byte) * writer_count_;
-//     auto mask_addr = mask_reader_.read(mask_chunk_size, mask_chunk_size * row);
-//     if (mask_addr == nullptr) {
-//       return nullptr;
-//     }
-//     if (!std::all_of(mask_addr, mask_addr + mask_chunk_size, [](std::byte b) { return b == std::byte(0xFF); })) {
-//       return nullptr;
-//     }
+  std::shared_ptr<::arrow::RecordBatch> read() { return read(current_row_); }
+  std::shared_ptr<::arrow::RecordBatch> read(size_t row) {
+    if (row >= rows_) {
+      quill::error(logger_, "failed to read: row {} >= max row {}", row, rows_);
+      return nullptr;
+    }
+    auto mask_chunk_size = sizeof(std::byte) * writer_count_;
+    auto mask_addr = mask_reader_.read(mask_chunk_size, mask_chunk_size * row);
+    if (mask_addr == nullptr) {
+      return nullptr;
+    }
+    if (!std::all_of(mask_addr, mask_addr + mask_chunk_size, [](std::byte b) { return b == std::byte(0xFF); })) {
+      return nullptr;
+    }
 
-//     // all writer has written this row
-//     auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
-//   }
+    // all writer has written this row
+    auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
+    auto row_addr = data_reader_.mmap_addr() + row * row_data_size_ * sizeof(std::byte);
+    for (int i = 0; i < schema_->num_fields(); i++) {
+      auto field = schema_->field(i);
+      auto array_data = ::arrow::ArrayData::Make(field->type(), writer_count_);
+      array_data->buffers = {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<uint8_t*>(row_addr),
+                                                                        field->type()->byte_width() * writer_count_)};
+      array_data->length = writer_count_;
+      arrays.push_back(::arrow::MakeArray(array_data));
+      row_addr = row_addr + writer_count_ * field->type()->byte_width() * sizeof(std::byte);
+    }
+    return ::arrow::RecordBatch::Make(schema_, writer_count_, arrays);
+  }
 
-//  private:
-//   MmapReader data_reader_;
-//   MmapReader mask_reader_;
-//   size_t writer_count_;
-//   size_t rows_;
-//   size_t current_row_ = 0;
-//   std::shared_ptr<::arrow::Schema> schema_;
-//   quill::Logger* logger_;
-// };
+ private:
+  MmapReader data_reader_;
+  MmapReader mask_reader_;
+  size_t writer_count_;
+  size_t rows_;
+  size_t row_data_size_;
+  size_t current_row_ = 0;
+  std::shared_ptr<::arrow::Schema> schema_;
+  quill::Logger* logger_;
+};
 
 class ArrowDB {
  public:
@@ -237,6 +240,10 @@ class ArrowDB {
     }
     return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, rows_, column_bit_widths,
                        writer_count_, logger_);
+  }
+
+  ArrowReader reader() {
+    return ArrowReader(data_manager_.reader(), mask_manager_.reader(), writer_count_, rows_, schema_, logger_);
   }
 
  private:

@@ -13,20 +13,6 @@ struct Row {
   char c;
 } __attribute__((packed));
 
-// std::shared_ptr<arrow::RecordBatch> make_record_batch(mmap_db::arrow::ArrowWriter& writer,
-//                                                       std::shared_ptr<arrow::Schema> schema, int32_t rows) {
-//   auto arrays = std::vector<std::shared_ptr<arrow::Array>>();
-//   for (int i = 0; i < schema->num_fields(); i++) {
-//     auto field = schema->field(i);
-//     auto array_data = arrow::ArrayData::Make(field->type(), rows);
-//     array_data->buffers = {nullptr, std::make_shared<arrow::Buffer>(reinterpret_cast<uint8_t*>(writer.col_addr(i)),
-//                                                                     rows * field->type()->byte_width())};
-//     array_data->length = rows;
-//     arrays.push_back(arrow::MakeArray(array_data));
-//   }
-//   return arrow::RecordBatch::Make(schema, rows, arrays);
-// }
-
 int main() {
   quill::Backend::start();
   auto logger =

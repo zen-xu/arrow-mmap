@@ -88,6 +88,46 @@ class ArrowWriter {
   quill::Logger* logger_;
 };
 
+// class ArrowReader {
+//  public:
+//   ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t rows,
+//               std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
+//       : data_reader_(data_reader),
+//         mask_reader_(mask_reader),
+//         writer_count_(writer_count),
+//         rows_(rows),
+//         schema_(schema),
+//         logger_(logger) {}
+
+//   std::shared_ptr<::arrow::RecordBatch> read() { return read(current_row_); }
+//   std::shared_ptr<::arrow::RecordBatch> read(size_t row) {
+//     if (row >= rows_) {
+//       quill::error(logger_, "failed to read: row {} >= max row {}", row, rows_);
+//       return nullptr;
+//     }
+//     auto mask_chunk_size = sizeof(std::byte) * writer_count_;
+//     auto mask_addr = mask_reader_.read(mask_chunk_size, mask_chunk_size * row);
+//     if (mask_addr == nullptr) {
+//       return nullptr;
+//     }
+//     if (!std::all_of(mask_addr, mask_addr + mask_chunk_size, [](std::byte b) { return b == std::byte(0xFF); })) {
+//       return nullptr;
+//     }
+
+//     // all writer has written this row
+//     auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
+//   }
+
+//  private:
+//   MmapReader data_reader_;
+//   MmapReader mask_reader_;
+//   size_t writer_count_;
+//   size_t rows_;
+//   size_t current_row_ = 0;
+//   std::shared_ptr<::arrow::Schema> schema_;
+//   quill::Logger* logger_;
+// };
+
 class ArrowDB {
  public:
   ArrowDB(const std::string& path, ArrowWriterConfig config = ArrowWriterConfig())

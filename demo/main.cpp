@@ -5,59 +5,69 @@
 #include <quill/LogFunctions.h>
 #include <quill/sinks/ConsoleSink.h>
 
-#include "mmap/dyn_partition_db.hpp"
+#include "mmap/arrow_db.hpp"
+
+struct Row {
+  int32_t id;
+  char c;
+} __attribute__((packed));
+
+std::shared_ptr<arrow::RecordBatch> make_record_batch(mmap_db::arrow::ArrowWriter& writer,
+                                                      std::shared_ptr<arrow::Schema> schema, int32_t rows) {
+  auto arrays = std::vector<std::shared_ptr<arrow::Array>>();
+  for (int i = 0; i < schema->num_fields(); i++) {
+    auto field = schema->field(i);
+    auto array_data = arrow::ArrayData::Make(field->type(), rows);
+    array_data->buffers = {nullptr, std::make_shared<arrow::Buffer>(reinterpret_cast<uint8_t*>(writer.col_addr(i)),
+                                                                    rows * field->type()->byte_width())};
+    array_data->length = rows;
+    arrays.push_back(arrow::MakeArray(array_data));
+  }
+  return arrow::RecordBatch::Make(schema, rows, arrays);
+}
 
 int main() {
   quill::Backend::start();
   auto logger =
       quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
-  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::F>("arrow_db");
-  constexpr int64_t num_rows = 3;
-  constexpr int64_t fixed_size = 8;
 
-  auto schema =
-      arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(fixed_size))});
-  db.create(num_rows, [schema, num_rows]() {
-    std::vector<size_t> f_byte_width;
-    for (auto field : schema->fields()) {
-      f_byte_width.push_back(field->type()->byte_width());
-    }
-    return f_byte_width;
-  }());
-  db.truncate(num_rows, true);
+  auto rows = 4;
+  auto db = mmap_db::arrow::ArrowDB("arrow_db");
+  auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
+  db.create(2, rows, schema);
 
-  auto id_writer = db.writer(0);
-  int32_t id1 = 1;
-  int32_t id2 = 2;
-  int32_t id3 = 3;
-  id_writer.write(&id1);
-  id_writer.write(&id2);
-  id_writer.write(&id3);
-  auto id_writer_addr = id_writer.addr(0);
-  auto id_array_data = arrow::ArrayData::Make(arrow::int32(), num_rows);
-  id_array_data->buffers = {
-      nullptr, std::make_shared<arrow::Buffer>(reinterpret_cast<uint8_t*>(id_writer_addr), num_rows * sizeof(int32_t))};
-  id_array_data->length = num_rows;
-  auto id_array = arrow::MakeArray(id_array_data);
+  auto writer0 = db.writer(0);
+  Row row1{1, 'a'};
+  Row row2{2, 'b'};
+  Row row3{3, 'c'};
+  Row row4{4, 'd'};
+  writer0.write(&row1);
+  writer0.write(&row2);
+  writer0.write(&row3);
+  writer0.write(&row4);
 
-  auto name_writer = db.writer(1);
-  std::string name1 = "Alice";
-  std::string name2 = "Bob";
-  std::string name3 = "Charlie";
-  name_writer.write(name1.c_str());
-  name_writer.write(name2.c_str());
-  name_writer.write(name3.c_str());
-  auto name_writer_addr = name_writer.addr(0);
-  auto name_array_data = arrow::ArrayData::Make(arrow::fixed_size_binary(fixed_size), num_rows);
-  name_array_data->buffers = {
-      nullptr, std::make_shared<arrow::Buffer>(reinterpret_cast<uint8_t*>(name_writer_addr), num_rows * fixed_size)};
-  name_array_data->length = num_rows;
-  auto name_array = arrow::MakeArray(name_array_data);
+  auto writer1 = db.writer(1);
+  Row row5{5, 'e'};
+  Row row6{6, 'f'};
+  Row row7{7, 'g'};
+  Row row8{8, 'h'};
+  writer1.write(&row5);
+  writer1.write(&row6);
+  writer1.write(&row7);
+  writer1.write(&row8);
 
-  auto batch = arrow::RecordBatch::Make(schema, num_rows, {id_array, name_array});
-  for (int i = 0; i < batch->num_rows(); ++i) {
-    auto id_scalar = batch->column(0)->GetScalar(i).ValueOrDie();
-    auto name_scalar = batch->column(1)->GetScalar(i).ValueOrDie();
-    quill::info(logger, "id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
+  auto batch0 = make_record_batch(writer0, schema, rows);
+  auto batch1 = make_record_batch(writer1, schema, rows);
+
+  for (int i = 0; i < batch0->num_rows(); i++) {
+    auto id_scalar = batch0->column(0)->GetScalar(i).ValueOrDie();
+    auto name_scalar = batch0->column(1)->GetScalar(i).ValueOrDie();
+    quill::info(logger, "batch0 id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
   }
+  for (int i = 0; i < batch1->num_rows(); i++) {
+    auto id_scalar = batch1->column(0)->GetScalar(i).ValueOrDie();
+    auto name_scalar = batch1->column(1)->GetScalar(i).ValueOrDie();
+    quill::info(logger, "batch1 id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
+  }
+  return 0;
 }

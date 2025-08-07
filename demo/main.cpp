@@ -40,11 +40,7 @@ int main() {
   if (batch == nullptr) {
     quill::error(logger, "batch is nullptr");
   } else {
-    for (int i = 0; i < batch->num_rows(); i++) {
-      auto id_scalar = batch->column(0)->GetScalar(i).ValueOrDie();
-      auto name_scalar = batch->column(1)->GetScalar(i).ValueOrDie();
-      quill::info(logger, "batch id: {}, name: {}", id_scalar->ToString(), name_scalar->ToString());
-    }
+    quill::info(logger, "batch:\n{}", batch->ToString());
   }
 
   return 0;

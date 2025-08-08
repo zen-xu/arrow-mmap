@@ -38,7 +38,7 @@ class ArrowWriter {
 
   template <typename T>
   inline bool write(const T& batch_data) {
-    return write(std::move(batch_data), current_batch_);
+    return write(std::move(batch_data));
   }
 
   template <typename T>

@@ -1,4 +1,6 @@
 
+#include <thread>
+
 #include <benchmark/benchmark.h>
 #include <quill/Backend.h>
 #include <quill/Frontend.h>
@@ -27,18 +29,25 @@ static void BM_MemcpyPerformance(benchmark::State& state) {
   }
 }
 
+void write_thread(mmap_db::arrow::ArrowDB& db, int batch_size, int writer_id) {
+  auto writer = db.writer(writer_id);
+  auto row = Row{1, 'a'};
+  for (auto i = 0; i < batch_size; ++i) {
+    writer.write(row, i);
+  }
+}
+
 static void BM_ArrowWritePerformance(benchmark::State& state) {
   auto db = mmap_db::arrow::ArrowDB("benchmark_arrow_db");
   auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
   auto batch_size = 1000000;
-  db.create(1, batch_size, schema);
+  db.create(2, batch_size, schema);
 
-  auto writer = db.writer(0);
-  auto row = Row{1, 'a'};
   for (auto _ : state) {
-    for (auto i = 0; i < batch_size; ++i) {
-      writer.write(row, i);
-    }
+    std::thread t0(write_thread, std::ref(db), batch_size, 0);
+    std::thread t1(write_thread, std::ref(db), batch_size, 1);
+    t0.join();
+    t1.join();
   }
 }
 

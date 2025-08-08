@@ -37,17 +37,17 @@ class ArrowWriter {
         logger_(logger) {}
 
   template <typename T>
-  bool write(const T& batch_data) {
+  inline bool write(const T& batch_data) {
     return write(std::move(batch_data), current_batch_);
   }
 
   template <typename T>
-  bool write(const T& batch_data, size_t batch) {
+  inline bool write(const T& batch_data, size_t batch) {
     return write(std::move(batch_data), batch);
   }
 
   template <typename T>
-  bool write(const T&& batch_data) {
+  inline bool write(const T&& batch_data) {
     auto ret = write(batch_data, current_batch_);
     if (ret) {
       current_batch_++;

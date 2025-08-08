@@ -68,12 +68,13 @@ class ArrowWriter {
     auto batch_offset = batch * writer_count_;
     auto batch_addr = data_writer_.mmap_addr() + batch_offset * sizeof(T);
 
-    for (size_t col_id = 0; col_id < column_bit_widths_.size(); col_id++) {
-      auto col_bit_width = column_bit_widths_[col_id];
-      auto batch_col_addr = batch_addr + column_bit_offsets_[col_id] * sizeof(std::byte);
-      auto batch_col_worker_addr = batch_col_addr + writer_id_ * col_bit_width * sizeof(std::byte);
-      std::memcpy(batch_col_worker_addr, batch_data, col_bit_width * sizeof(std::byte));
-      batch_data = batch_data + col_bit_width * sizeof(std::byte);
+    const std::byte* col_data_ptr = batch_data;
+    for (size_t col_id = 0; col_id < column_bit_widths_.size(); ++col_id) {
+      size_t col_bit_width = column_bit_widths_[col_id];
+      size_t col_offset = column_bit_offsets_[col_id];
+      std::byte* dest = batch_addr + col_offset * sizeof(std::byte) + writer_id_ * col_bit_width * sizeof(std::byte);
+      std::memcpy(dest, col_data_ptr, col_bit_width * sizeof(std::byte));
+      col_data_ptr += col_bit_width * sizeof(std::byte);
     }
 
     // mark current writer row is written

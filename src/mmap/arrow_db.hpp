@@ -36,29 +36,31 @@ class ArrowWriter {
 
   template <typename T>
   bool write(const T& batch_data) {
-    return write(reinterpret_cast<const void*>(&batch_data));
+    return write(std::move(batch_data));
   }
 
   template <typename T>
-  bool write(const T& batch_data, size_t batch) {
-    return write(reinterpret_cast<const void*>(&batch_data), batch);
-  }
-
-  bool write(const void* batch_data) {
-    auto ret = write(batch_data, current_batch_);
+  bool write(const T&& batch_data) {
+    auto ret = write(std::move(batch_data), current_batch_);
     if (ret) {
       current_batch_++;
     }
     return ret;
   }
 
-  bool write(const void* batch_data, size_t batch) {
+  template <typename T>
+  bool write(const T& batch_data, size_t batch) {
+    return write(std::move(batch_data), batch);
+  }
+
+  template <typename T>
+  bool write(const T&& batch_data, size_t batch) {
     if (batch >= batch_count_) {
       quill::error(logger_, "failed to write: batch {} >= batch count {}", batch, batch_count_);
       return false;
     }
-    auto batch_data_addr = data_writer_.mmap_addr() + (batch * batch_chunk_size_) * sizeof(std::byte);
-    auto batch_data_ptr = reinterpret_cast<const std::byte*>(batch_data);
+    auto batch_data_addr = data_writer_.mmap_addr() + batch * sizeof(T) * writer_count_;
+    auto batch_data_ptr = reinterpret_cast<const std::byte*>(&batch_data);
     for (size_t col_id = 0; col_id < column_bit_widths_.size(); col_id++) {
       auto col_bit_width = column_bit_widths_[col_id];
       auto batch_addr = batch_data_addr + column_bit_offsets_[col_id] * sizeof(std::byte);

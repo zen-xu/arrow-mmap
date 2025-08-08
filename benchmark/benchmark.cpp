@@ -14,32 +14,37 @@ struct Row {
 
 static void BM_MemcpyPerformance(benchmark::State& state) {
   auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
-  int capacity = 1;
-  db.create(capacity, {sizeof(Row)});
+  int batch_size = 1000000;
+  db.create(batch_size, {sizeof(Row)});
   auto writer = db.writer(0);
 
   Row row{1, 'a'};
   auto addr = writer.addr();
   for (auto _ : state) {
-    std::memcpy(addr + sizeof(Row), &row, sizeof(Row));
+    for (auto i = 0; i < batch_size; ++i) {
+      std::memcpy(addr + i * sizeof(Row), &row, sizeof(Row));
+    }
   }
 }
 
 static void BM_ArrowWritePerformance(benchmark::State& state) {
   auto db = mmap_db::arrow::ArrowDB("benchmark_arrow_db");
   auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
-  db.create(1, state.max_iterations, schema);
+  auto batch_size = 1000000;
+  db.create(1, batch_size, schema);
 
   auto writer = db.writer(0);
   auto row = Row{1, 'a'};
   for (auto _ : state) {
-    writer.write(row);
+    for (auto i = 0; i < batch_size; ++i) {
+      writer.write(row, i);
+    }
   }
 }
 
 // 注册基准测试
-BENCHMARK(BM_ArrowWritePerformance)->Iterations(100000);
-BENCHMARK(BM_MemcpyPerformance)->Iterations(100000);
+BENCHMARK(BM_ArrowWritePerformance)->Iterations(100);
+BENCHMARK(BM_MemcpyPerformance)->Iterations(100);
 
 int main(int argc, char** argv) {
   benchmark::MaybeReenterWithoutASLR(argc, argv);

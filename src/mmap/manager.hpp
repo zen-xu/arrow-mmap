@@ -81,8 +81,9 @@ class MmapWriter {
   MmapWriter() = default;
 
   inline size_t length() const { return length_; }
+  inline std::byte* mmap_addr() const { return mmap_addr_; }
 
-  inline bool write(const void* buf, size_t buf_n, size_t mmap_offset) {
+  inline bool write(const void* buf, size_t buf_n, size_t mmap_offset) const {
     if (mmap_offset + buf_n > length_) {
       return false;
     }
@@ -90,10 +91,8 @@ class MmapWriter {
     return true;
   }
 
-  inline std::byte* mmap_addr() const { return static_cast<std::byte*>(mmap_addr_); }
-
  private:
-  int length_ = 0;
+  const int length_ = 0;
   std::byte* mmap_addr_ = nullptr;
 };
 
@@ -103,17 +102,16 @@ class MmapReader {
   MmapReader() = default;
 
   inline size_t length() const { return length_; }
+  inline const std::byte* mmap_addr() const { return mmap_addr_; }
 
-  inline std::byte* mmap_addr() const { return mmap_addr_; }
-
-  inline std::byte* read(size_t data_size, size_t mmap_offset) {
+  inline const std::byte* read(size_t data_size, size_t mmap_offset) const {
     if (mmap_offset + data_size > length_) {
       return nullptr;
     }
     return mmap_addr_ + mmap_offset;
   }
 
-  inline bool read(void* buf, size_t buf_n, size_t mmap_offset) {
+  inline bool read(void* buf, size_t buf_n, size_t mmap_offset) const {
     auto src_ptr = read(buf_n, mmap_offset);
     if (src_ptr == nullptr) {
       return false;
@@ -123,8 +121,8 @@ class MmapReader {
   }
 
  private:
-  int length_ = 0;
-  std::byte* mmap_addr_ = nullptr;
+  const int length_ = 0;
+  const std::byte* mmap_addr_ = nullptr;
 };
 
 class MmapManager {

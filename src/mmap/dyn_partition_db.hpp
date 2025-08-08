@@ -119,7 +119,7 @@ class DynPartitionDBReader {
     return ret;
   }
 
-  inline std::byte* read(size_t index) {
+  inline const std::byte* read(size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to read: index out of capacity {} >= {}", index, capacity_);
       return nullptr;
@@ -161,7 +161,7 @@ class DynPartitionDB {
       auto schema_manager = MmapManager(schema_path_);
       auto schema_reader = schema_manager.reader();
 
-      auto buf = reinterpret_cast<size_t*>(schema_reader.read(schema_reader.length(), 0));
+      auto buf = reinterpret_cast<const size_t*>(schema_reader.read(schema_reader.length(), 0));
       if (nullptr != buf) {
         for (size_t i = 0; i < schema_reader.length() / sizeof(size_t); i++) {
           partition_sizes_.push_back(buf[i]);

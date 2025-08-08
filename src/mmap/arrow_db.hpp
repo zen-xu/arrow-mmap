@@ -174,7 +174,7 @@ class ArrowDB {
   }
 
   size_t writer_count() const { return writer_count_; }
-  size_t rows() const { return batch_count_; }
+  size_t batch_count() const { return batch_count_; }
   std::shared_ptr<::arrow::Schema> schema() const { return schema_; }
 
   bool create(size_t writer_count, size_t batch_count, std::shared_ptr<::arrow::Schema> schema) {

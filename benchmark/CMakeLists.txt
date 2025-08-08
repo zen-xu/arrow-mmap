@@ -1,7 +1,10 @@
-add_executable(benchmark_mmap_db benchmark_mmap_db.cpp)
+add_executable(benchmark_mmap benchmark.cpp)
 
-target_link_libraries(benchmark_mmap_db PRIVATE
+find_package(Arrow REQUIRED)
+
+target_link_libraries(benchmark_mmap PRIVATE
     mmap_db_lib
+    Arrow::arrow_shared
     benchmark::benchmark
     pthread
 )

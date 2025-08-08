@@ -4,8 +4,8 @@
 #include <quill/Frontend.h>
 #include <quill/sinks/ConsoleSink.h>
 
+#include "mmap/arrow_db.hpp"
 #include "mmap/dyn_partition_db.hpp"
-#include "mmap/partition_db.hpp"
 
 struct Data0 {
   int a, b, c, d;
@@ -16,53 +16,45 @@ struct Data1 {
   double c;
 };
 
-static void BM_WritePerformance(benchmark::State& state) {
-  auto db = mmap_db::PartitionDB<std::tuple<Data0, Data1>>("benchmark_db");
-  int capacity = 10000000;
-  db.truncate_or_create(capacity, true);
-  auto writer = db.writer<0>();
+struct Row {
+  int32_t id;
+  char c;
+} __attribute__((packed));
 
-  Data0 data0{1, 1, 1, 1};
-  for (auto _ : state) {
-    for (int i = 0; i < capacity; i++) {
-      writer.write(data0, i);
-    }
-  }
+template <typename T>
+void memcpy(std::byte* dest, const void* src) {
+  std::memcpy(dest + sizeof(T), src, sizeof(T));
 }
 
 static void BM_DynWritePerformance(benchmark::State& state) {
   auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
-  int capacity = 10;
-  db.create(capacity, {sizeof(Data0)});
-  auto writer = db.writer(0);
-
-  Data0 data0{1, 1, 1, 1};
-  for (auto _ : state) {
-    for (int i = 0; i < capacity; i++) {
-      writer.write(&data0, i);
-    }
-  }
-}
-
-static void BM_DynWritePerformance2(benchmark::State& state) {
-  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
-  int capacity = 10;
+  int capacity = 1;
   db.create(capacity, {sizeof(Data0)});
   auto writer = db.writer(0);
 
   Data0 data0{1, 1, 1, 1};
   auto addr = writer.addr();
   for (auto _ : state) {
-    for (int i = 0; i < capacity; i++) {
-      std::memcpy(addr + i * sizeof(Data0), &data0, sizeof(Data0));
-    }
+    memcpy<Data0>(addr, &data0);
+    // std::memcpy(addr + sizeof(Data0), &data0, sizeof(Data0));
+  }
+}
+
+static void BM_ArrowWritePerformance(benchmark::State& state) {
+  auto db = mmap_db::arrow::ArrowDB("benchmark_arrow_db");
+  auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
+  db.create(1, state.max_iterations, schema);
+
+  auto writer = db.writer(0);
+  auto row = Row{1, 'a'};
+  for (auto _ : state) {
+    writer.write(row);
   }
 }
 
 // 注册基准测试
-// BENCHMARK(BM_WritePerformance)->Iterations(100);
-BENCHMARK(BM_DynWritePerformance)->Iterations(100000000);
-BENCHMARK(BM_DynWritePerformance2)->Iterations(100000000);
+BENCHMARK(BM_ArrowWritePerformance)->Iterations(100000);
+BENCHMARK(BM_DynWritePerformance)->Iterations(100000);
 
 int main(int argc, char** argv) {
   benchmark::MaybeReenterWithoutASLR(argc, argv);

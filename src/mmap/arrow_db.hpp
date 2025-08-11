@@ -18,96 +18,93 @@ struct ArrowWriterConfig {
 
 class ArrowWriter {
  public:
-  ArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t capacity,
-              std::vector<size_t> column_bit_widths, size_t writer_count, quill::Logger* logger)
+  ArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t capacity, size_t array_length,
+              std::vector<size_t> rb_column_sizes, size_t writer_count, quill::Logger* logger)
       : data_writer_(data_writer),
         mask_writer_(mask_writer),
         writer_id_(writer_id),
         writer_count_(writer_count),
         capacity_(capacity),
-        column_bit_widths_(column_bit_widths),
-        column_bit_offsets_([&]() {
+        array_length_(array_length),
+        rb_size_(std::accumulate(rb_column_sizes.begin(), rb_column_sizes.end(), 0) * array_length),
+        rb_column_sizes_(rb_column_sizes),
+        rb_column_chunk_sizes_([&]() {
+          std::vector<size_t> sizes;
+          for (size_t i = 0; i < rb_column_sizes.size(); i++) {
+            sizes.push_back(rb_column_sizes[i] * array_length / writer_count);
+          }
+          return sizes;
+        }()),
+        rb_column_offsets_([&]() {
           std::vector<size_t> offsets;
-          for (size_t i = 0; i < column_bit_widths.size(); i++) {
-            offsets.push_back(std::accumulate(column_bit_widths.begin(), column_bit_widths.begin() + i, 0) *
-                              writer_count);
+          for (size_t i = 0; i < rb_column_sizes.size(); i++) {
+            offsets.push_back(std::accumulate(rb_column_sizes.begin(), rb_column_sizes.begin() + i, 0) * array_length);
           }
           return offsets;
         }()),
         logger_(logger) {}
 
-  template <typename T>
-  inline bool write(const T& batch_data) {
-    return write(std::move(batch_data));
-  }
+  const std::byte* data_addr() const { return data_writer_.mmap_addr(); }
+  const MmapWriter& data_writer() const { return data_writer_; }
 
-  template <typename T>
-  inline bool write(const T& batch_data, size_t index) {
-    return write(std::move(batch_data), index);
-  }
-
-  template <typename T>
-  inline bool write(const T&& batch_data) {
-    auto ret = write(batch_data, index_);
+  bool write(const std::shared_ptr<::arrow::RecordBatch>& record_batch_chunk) {
+    auto ret = write(record_batch_chunk, index_);
     if (ret) {
       index_++;
     }
     return ret;
   }
 
-  template <typename T>
-  inline bool write(const T&& batch_data, size_t index) {
-    return internal_write<T>(reinterpret_cast<const std::byte*>(&batch_data), index);
-  }
-
- private:
-  template <typename T>
-  inline bool internal_write(const std::byte* batch_data, size_t index) {
+  bool write(const std::shared_ptr<::arrow::RecordBatch>& record_batch_chunk, size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to write: index {} >= capacity {}", index, capacity_);
       return false;
     }
 
-    auto index_offset = index * writer_count_;
-    auto index_batch_addr = data_writer_.mmap_addr() + index_offset * sizeof(T);
-    const std::byte* col_data_ptr = batch_data;
-    for (size_t col_id = 0; col_id < column_bit_widths_.size(); ++col_id) {
-      size_t col_bit_width = column_bit_widths_[col_id];
-      size_t col_offset = column_bit_offsets_[col_id];
-      std::byte* dest =
-          index_batch_addr + col_offset * sizeof(std::byte) + writer_id_ * col_bit_width * sizeof(std::byte);
-      std::memcpy(dest, col_data_ptr, col_bit_width * sizeof(std::byte));
-      col_data_ptr += col_bit_width * sizeof(std::byte);
+    // the address of the record batch
+    auto rb_addr = data_writer_.mmap_addr() + index * rb_size_;
+
+    for (size_t col_id = 0; col_id < record_batch_chunk->num_columns(); col_id++) {
+      auto chunk_col_size = rb_column_chunk_sizes_[col_id];
+      auto rb_col_addr = rb_addr + rb_column_offsets_[col_id] * sizeof(std::byte);
+      auto rb_col_writer_addr = rb_col_addr + writer_id_ * chunk_col_size * sizeof(std::byte);
+      auto col_array = record_batch_chunk->column(col_id)->data();
+      auto col_array_data = col_array->buffers[1];
+      std::memcpy(rb_col_writer_addr, reinterpret_cast<uint8_t*>(col_array_data->address()), col_array_data->size());
     }
 
     // mark current writer row is written
     auto mask_addr = mask_writer_.mmap_addr();
-    mask_addr[index_offset + writer_id_] = std::byte(0xFF);
+    mask_addr[index * writer_count_ + writer_id_] = std::byte(0xFF);
     return true;
   }
 
+ private:
   const MmapWriter data_writer_;
   const MmapWriter mask_writer_;
   const size_t writer_id_;
   const size_t writer_count_;
   const size_t capacity_;
-  const std::vector<size_t> column_bit_widths_;
-  const std::vector<size_t> column_bit_offsets_;
+  const size_t array_length_;
+  const size_t rb_size_;
+  const std::vector<size_t> rb_column_sizes_;
+  const std::vector<size_t> rb_column_chunk_sizes_;
+  const std::vector<size_t> rb_column_offsets_;
   quill::Logger* logger_;
   size_t index_ = 0;
 };
 
 class ArrowReader {
  public:
-  ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t capacity,
+  ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t capacity, size_t array_length,
               std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
       : data_reader_(data_reader),
         mask_reader_(mask_reader),
         writer_count_(writer_count),
         capacity_(capacity),
-        batch_chunk_size_(
-            std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
-                            [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); })),
+        array_length_(array_length),
+        rb_size_(std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
+                                 [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); })),
         schema_(schema),
         logger_(logger) {}
 
@@ -127,20 +124,19 @@ class ArrowReader {
       return nullptr;
     }
 
-    // all writer has written this row
+    // all writer have written this record batch
     auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
-    auto index_batch_addr = data_reader_.mmap_addr() + index * batch_chunk_size_ * sizeof(std::byte);
+    auto rb_addr = data_reader_.mmap_addr() + index * rb_size_ * sizeof(std::byte);
     for (int i = 0; i < schema_->num_fields(); i++) {
       auto field = schema_->field(i);
-      auto array_data = ::arrow::ArrayData::Make(field->type(), writer_count_);
-      array_data->buffers = {nullptr,
-                             std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(index_batch_addr),
-                                                               field->type()->byte_width() * writer_count_)};
-      array_data->length = writer_count_;
+      auto filed_array_size = field->type()->byte_width() * array_length_;
+      auto array_data = ::arrow::ArrayData::Make(
+          field->type(), array_length_,
+          {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(rb_addr), filed_array_size)});
       arrays.push_back(::arrow::MakeArray(array_data));
-      index_batch_addr = index_batch_addr + writer_count_ * field->type()->byte_width() * sizeof(std::byte);
+      rb_addr += filed_array_size * sizeof(std::byte);
     }
-    return ::arrow::RecordBatch::Make(schema_, writer_count_, arrays);
+    return ::arrow::RecordBatch::Make(schema_, 1, arrays);
   }
 
  private:
@@ -148,7 +144,8 @@ class ArrowReader {
   const MmapReader mask_reader_;
   const size_t writer_count_;
   const size_t capacity_;
-  const size_t batch_chunk_size_;
+  const size_t array_length_;
+  const size_t rb_size_;
   const std::shared_ptr<::arrow::Schema> schema_;
   size_t index_ = 0;
   quill::Logger* logger_;
@@ -167,6 +164,7 @@ class ArrowDB {
       std::ifstream schema_ifs(schema_path_, std::ios::binary);
       schema_ifs.read(reinterpret_cast<char*>(&writer_count_), sizeof(writer_count_));
       schema_ifs.read(reinterpret_cast<char*>(&capacity_), sizeof(capacity_));
+      schema_ifs.read(reinterpret_cast<char*>(&array_length_), sizeof(array_length_));
       std::vector<char> schema_data_vec(std::istreambuf_iterator<char>(schema_ifs), {});
       schema_ifs.close();
       auto schema_buffer = ::arrow::Buffer::FromString(std::string(schema_data_vec.begin(), schema_data_vec.end()));
@@ -179,13 +177,22 @@ class ArrowDB {
   size_t capacity() const { return capacity_; }
   std::shared_ptr<::arrow::Schema> schema() const { return schema_; }
 
-  bool create(size_t writer_count, size_t capacity, std::shared_ptr<::arrow::Schema> schema) {
+  // schema is the element type of array
+  bool create(size_t writer_count, size_t capacity, size_t array_length, std::shared_ptr<::arrow::Schema> schema) {
     if (writer_count == 0) {
       quill::error(logger_, "fail to create: writer_count can't be 0");
       return false;
     }
     if (capacity == 0) {
       quill::error(logger_, "fail to create: capacity can't be 0");
+      return false;
+    }
+    if (array_length % writer_count != 0) {
+      quill::error(logger_, "fail to create: array_length must be divisible by writer_count");
+      return false;
+    }
+    if (array_length == 0) {
+      quill::error(logger_, "fail to create: array_length can't be 0");
       return false;
     }
     if (schema == nullptr) {
@@ -212,6 +219,7 @@ class ArrowDB {
       auto schema_buffer = ::arrow::ipc::SerializeSchema(*schema).ValueOrDie();
       schema_ofs.write(reinterpret_cast<const char*>(&writer_count), sizeof(size_t));
       schema_ofs.write(reinterpret_cast<const char*>(&capacity), sizeof(size_t));
+      schema_ofs.write(reinterpret_cast<const char*>(&array_length), sizeof(size_t));
       schema_ofs.write(reinterpret_cast<const char*>(schema_buffer->data()), schema_buffer->size());
       schema_ofs.close();
     }
@@ -219,7 +227,7 @@ class ArrowDB {
     // create data and mask file
     auto create_file = [&]() -> bool {
       auto data_capacity =
-          sizeof(std::byte) * capacity * writer_count *
+          sizeof(std::byte) * capacity * array_length *
           std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
                           [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); });
       if (!::mmap_db::truncate(data_path_, data_capacity, true)) {
@@ -247,6 +255,7 @@ class ArrowDB {
     }
     writer_count_ = writer_count;
     capacity_ = capacity;
+    array_length_ = array_length;
     schema_ = schema;
     return true;
   }
@@ -259,12 +268,13 @@ class ArrowDB {
     for (auto field : schema_->fields()) {
       column_bit_widths.push_back(field->type()->byte_width());
     }
-    return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, capacity_, column_bit_widths,
-                       writer_count_, logger_);
+    return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, capacity_, array_length_,
+                       column_bit_widths, writer_count_, logger_);
   }
 
   ArrowReader reader() {
-    return ArrowReader(data_manager_.reader(), mask_manager_.reader(), writer_count_, capacity_, schema_, logger_);
+    return ArrowReader(data_manager_.reader(), mask_manager_.reader(), writer_count_, capacity_, array_length_, schema_,
+                       logger_);
   }
 
  private:
@@ -273,6 +283,7 @@ class ArrowDB {
   std::string schema_path_;
   size_t writer_count_ = 0;
   size_t capacity_ = 0;
+  size_t array_length_ = 0;
   MmapManager data_manager_;
   MmapManager mask_manager_;
   std::shared_ptr<::arrow::Schema> schema_ = nullptr;

@@ -65,8 +65,9 @@ static void BM_ArrowDBThreadPerformance(benchmark::State& state) {
 }
 
 // // 注册基准测试
-BENCHMARK(BM_ArrowDBPerformance)->Iterations(100);
-BENCHMARK(BM_ArrowDBThreadPerformance)->Iterations(100);
+BENCHMARK(BM_ArrowDBPerformance)->Iterations(10);
+// BENCHMARK(BM_ArrowDBThreadPerformance)->Iterations(10);
+// BENCHMARK(BM_ArrowDBThreadPerformance)->Iterations(100);
 
 int main(int argc, char** argv) {
   benchmark::MaybeReenterWithoutASLR(argc, argv);

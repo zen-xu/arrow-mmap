@@ -21,7 +21,7 @@ inline size_t get_length(int fd) {
   return st.st_size;
 }
 
-inline bool truncate(const std::string& file, size_t length, bool fill_zero = false) {
+inline bool truncate(const std::string& file, size_t length, std::byte fill = std::byte(0x00)) {
   auto logger = quill::Frontend::create_or_get_logger("default");
 
   std::filesystem::path file_dir = std::filesystem::path(file).parent_path();
@@ -43,21 +43,21 @@ inline bool truncate(const std::string& file, size_t length, bool fill_zero = fa
     return false;
   }
 
+  int origin_length = get_length(fd);
   if (-1 == ftruncate(fd, length)) {
     quill::error(logger, "fail to truncate {}: {}", truncate_file, strerror(errno));
     close(fd);
     return false;
   }
 
-  int origin_length = get_length(fd);
-  if (fill_zero && origin_length < length) {
+  if (origin_length < length) {
     void* addr = ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (addr == MAP_FAILED) {
       quill::error(logger, "failed to mmap {}: {}", truncate_file, strerror(errno));
       close(fd);
       return false;
     }
-    std::memset(static_cast<char*>(addr) + origin_length, 0, length - origin_length);
+    std::memset(static_cast<char*>(addr) + origin_length, static_cast<int>(fill), length - origin_length);
     munmap(addr, length);
   }
 

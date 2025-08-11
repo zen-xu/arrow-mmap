@@ -7,53 +7,66 @@
 #include <quill/sinks/ConsoleSink.h>
 
 #include "mmap/arrow_db.hpp"
-#include "mmap/dyn_partition_db.hpp"
 
-struct Row {
-  int32_t id;
-  char c;
-} __attribute__((packed));
+const auto SCHEMA = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("age", arrow::int32())});
+const size_t BATCH_SIZE = 1000000;
 
-static void BM_MemcpyPerformance(benchmark::State& state) {
-  auto db = mmap_db::DynPartitionDB<mmap_db::DynPartitionOrder::C>("benchmark_dyn_db");
-  int batch_size = 1000000;
-  db.create(batch_size, {sizeof(Row)});
+const std::shared_ptr<arrow::RecordBatch> create_batch(std::vector<int32_t> ids, std::vector<int32_t> ages) {
+  std::shared_ptr<arrow::Array> id_array;
+  std::shared_ptr<arrow::Array> age_array;
+  arrow::Int32Builder id_builder, age_builder;
+  id_builder.AppendValues(ids);
+  age_builder.AppendValues(ages);
+  id_builder.Finish(&id_array);
+  age_builder.Finish(&age_array);
+  return arrow::RecordBatch::Make(SCHEMA, ids.size(), {id_array, age_array});
+}
+const std::shared_ptr<arrow::RecordBatch> batch1 = create_batch({1, 2, 3, 4, 5}, {21, 22, 23, 24, 25});
+const std::shared_ptr<arrow::RecordBatch> batch2 = create_batch({6, 7, 8, 9, 10}, {26, 27, 28, 29, 30});
+
+void write1_thread(mmap_db::arrow::ArrowDB& db) {
   auto writer = db.writer(0);
+  for (auto i = 0; i < BATCH_SIZE; ++i) {
+    writer.write(batch1, i);
+  }
+}
 
-  Row row{1, 'a'};
-  auto addr = writer.addr();
+void write2_thread(mmap_db::arrow::ArrowDB& db) {
+  auto writer = db.writer(1);
+  for (auto i = 0; i < BATCH_SIZE; ++i) {
+    writer.write(batch2, i);
+  }
+}
+
+static void BM_ArrowDBPerformance(benchmark::State& state) {
+  auto db = mmap_db::arrow::ArrowDB("benchmark_arrow_db");
+  db.create(1, BATCH_SIZE, 10, SCHEMA);
+  auto writer1 = db.writer(0);
+  auto writer2 = db.writer(0);
+
   for (auto _ : state) {
-    for (auto i = 0; i < batch_size; ++i) {
-      std::memcpy(addr + i * sizeof(Row), &row, sizeof(Row));
+    for (auto i = 0; i < BATCH_SIZE; ++i) {
+      writer1.write(batch1, i);
+      writer2.write(batch2, i);
     }
   }
 }
 
-void write_thread(mmap_db::arrow::ArrowDB& db, int batch_size, int writer_id) {
-  auto writer = db.writer(writer_id);
-  auto row = Row{1, 'a'};
-  for (auto i = 0; i < batch_size; ++i) {
-    writer.write(row, i);
-  }
-}
-
-static void BM_ArrowWritePerformance(benchmark::State& state) {
-  auto db = mmap_db::arrow::ArrowDB("benchmark_arrow_db");
-  auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("name", arrow::fixed_size_binary(1))});
-  auto batch_size = 1000000;
-  db.create(2, batch_size, schema);
+static void BM_ArrowDBThreadPerformance(benchmark::State& state) {
+  auto db = mmap_db::arrow::ArrowDB("benchmark_thread_arrow_db");
+  db.create(2, BATCH_SIZE, 10, SCHEMA);
 
   for (auto _ : state) {
-    std::thread t0(write_thread, std::ref(db), batch_size, 0);
-    std::thread t1(write_thread, std::ref(db), batch_size, 1);
+    std::thread t0(write1_thread, std::ref(db));
+    std::thread t1(write2_thread, std::ref(db));
     t0.join();
     t1.join();
   }
 }
 
-// 注册基准测试
-BENCHMARK(BM_ArrowWritePerformance)->Iterations(100);
-BENCHMARK(BM_MemcpyPerformance)->Iterations(100);
+// // 注册基准测试
+BENCHMARK(BM_ArrowDBPerformance)->Iterations(100);
+BENCHMARK(BM_ArrowDBThreadPerformance)->Iterations(100);
 
 int main(int argc, char** argv) {
   benchmark::MaybeReenterWithoutASLR(argc, argv);

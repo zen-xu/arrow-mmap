@@ -66,8 +66,8 @@ class ArrowWriter {
 
     for (size_t col_id = 0; col_id < record_batch_chunk->num_columns(); col_id++) {
       auto chunk_col_size = rb_column_chunk_sizes_[col_id];
-      auto rb_col_addr = rb_addr + rb_column_offsets_[col_id] * sizeof(std::byte);
-      auto rb_col_writer_addr = rb_col_addr + writer_id_ * chunk_col_size * sizeof(std::byte);
+      auto rb_col_addr = rb_addr + rb_column_offsets_[col_id];
+      auto rb_col_writer_addr = rb_col_addr + writer_id_ * chunk_col_size;
       auto col_array = record_batch_chunk->column(col_id)->data();
       auto col_array_data = col_array->buffers[1];
       std::memcpy(rb_col_writer_addr, reinterpret_cast<uint8_t*>(col_array_data->address()), col_array_data->size());
@@ -114,7 +114,7 @@ class ArrowReader {
       quill::error(logger_, "failed to read: index {} >= capacity {}", index, capacity_);
       return nullptr;
     }
-    auto mask_size = sizeof(std::byte) * writer_count_;
+    auto mask_size = writer_count_;
 
     auto mask_addr = mask_reader_.read(mask_size, mask_size * index);
     if (mask_addr == nullptr) {
@@ -126,7 +126,7 @@ class ArrowReader {
 
     // all writer have written this record batch
     auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
-    auto rb_addr = data_reader_.mmap_addr() + index * rb_size_ * sizeof(std::byte);
+    auto rb_addr = data_reader_.mmap_addr() + index * rb_size_;
     for (int i = 0; i < schema_->num_fields(); i++) {
       auto field = schema_->field(i);
       auto filed_array_size = field->type()->byte_width() * array_length_;
@@ -134,7 +134,7 @@ class ArrowReader {
           field->type(), array_length_,
           {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(rb_addr), filed_array_size)});
       arrays.push_back(::arrow::MakeArray(array_data));
-      rb_addr += filed_array_size * sizeof(std::byte);
+      rb_addr += filed_array_size;
     }
     return ::arrow::RecordBatch::Make(schema_, 1, arrays);
   }
@@ -227,7 +227,7 @@ class ArrowDB {
     // create data and mask file
     auto create_file = [&]() -> bool {
       auto data_capacity =
-          sizeof(std::byte) * capacity * array_length *
+          capacity * array_length *
           std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
                           [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); });
       if (!::mmap_db::truncate(data_path_, data_capacity, true)) {
@@ -237,7 +237,7 @@ class ArrowDB {
 
       // make sure creating mask file is atomic operation
       auto mask_tmp_path = mask_path_ + ".tmp";
-      auto mask_capacity = capacity * writer_count * sizeof(std::byte);
+      auto mask_capacity = capacity * writer_count;
       if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, true)) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
         std::filesystem::remove(mask_tmp_path);

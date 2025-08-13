@@ -125,18 +125,23 @@ class ArrowReader {
     }
 
     // all writer have written this record batch
-    auto arrays = std::vector<std::shared_ptr<::arrow::Array>>();
     auto rb_addr = data_reader_.mmap_addr() + index * rb_size_;
-    for (int i = 0; i < schema_->num_fields(); i++) {
-      auto field = schema_->field(i);
-      auto filed_array_size = field->type()->byte_width() * array_length_;
+    auto& fields = schema_->fields();
+    auto field_id = 0;
+    auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
+
+    for (const auto& field : fields) {
+      const auto field_array_size = field->type()->byte_width() * array_length_;
       auto array_data = ::arrow::ArrayData::Make(
           field->type(), array_length_,
-          {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(rb_addr), filed_array_size)});
-      arrays.push_back(::arrow::MakeArray(array_data));
-      rb_addr += filed_array_size;
+          {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(rb_addr), field_array_size)});
+      arrays[field_id] = ::arrow::MakeArray(array_data);
+      rb_addr += field_array_size;
+      field_id++;
     }
-    return ::arrow::RecordBatch::Make(schema_, 1, arrays);
+
+    index_ += 1;
+    return ::arrow::RecordBatch::Make(schema_, array_length_, arrays);
   }
 
  private:
@@ -230,7 +235,7 @@ class ArrowDB {
           capacity * array_length *
           std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
                           [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); });
-      if (!::mmap_db::truncate(data_path_, data_capacity, true)) {
+      if (!::mmap_db::truncate(data_path_, data_capacity)) {
         quill::error(logger_, "fail to truncate data: {}", data_path_);
         return false;
       }
@@ -238,7 +243,7 @@ class ArrowDB {
       // make sure creating mask file is atomic operation
       auto mask_tmp_path = mask_path_ + ".tmp";
       auto mask_capacity = capacity * writer_count;
-      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, true)) {
+      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, std::byte(0xFF))) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
         std::filesystem::remove(mask_tmp_path);
         return false;

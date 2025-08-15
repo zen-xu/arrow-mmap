@@ -11,14 +11,19 @@
 const auto SCHEMA = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("age", arrow::int32())});
 const size_t BATCH_SIZE = 1000000;
 
+#define RETURN_IF_STATUS_NOT_OK(s) \
+  if (!(s).ok()) {                 \
+    return nullptr;                \
+  }
+
 const std::shared_ptr<arrow::RecordBatch> create_batch(std::vector<int32_t> ids, std::vector<int32_t> ages) {
   std::shared_ptr<arrow::Array> id_array;
   std::shared_ptr<arrow::Array> age_array;
   arrow::Int32Builder id_builder, age_builder;
-  id_builder.AppendValues(ids);
-  age_builder.AppendValues(ages);
-  id_builder.Finish(&id_array);
-  age_builder.Finish(&age_array);
+  RETURN_IF_STATUS_NOT_OK(id_builder.AppendValues(ids));
+  RETURN_IF_STATUS_NOT_OK(age_builder.AppendValues(ages));
+  RETURN_IF_STATUS_NOT_OK(id_builder.Finish(&id_array));
+  RETURN_IF_STATUS_NOT_OK(age_builder.Finish(&age_array));
   return arrow::RecordBatch::Make(SCHEMA, ids.size(), {id_array, age_array});
 }
 const std::shared_ptr<arrow::RecordBatch> batch1 = create_batch({1, 2, 3, 4, 5}, {21, 22, 23, 24, 25});

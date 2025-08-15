@@ -1,59 +1,56 @@
-#include <arrow/api.h>
-#include <arrow/io/api.h>
-#include <arrow/ipc/api.h>
-#include <quill/Backend.h>
-#include <quill/Frontend.h>
-#include <quill/LogFunctions.h>
-#include <quill/sinks/ConsoleSink.h>
+#include <nanoarrow/nanoarrow.hpp>
+#include <nanoarrow/nanoarrow_ipc.hpp>
 
-#include "mmap/arrow_db.hpp"
+#include <nanoarrow/nanoarrow_ipc.h>
+
+bool WriteSchemaToFile(const std::string& filepath, nanoarrow::UniqueSchema& schema) {
+  // 打开文件
+  FILE* file = fopen(filepath.c_str(), "wb");
+  if (!file) {
+    return false;
+  }
+
+  // 创建输出流
+  nanoarrow::ipc::UniqueOutputStream output_stream;
+  struct ArrowError error;
+  if (ArrowIpcOutputStreamInitFile(output_stream.get(), file, true) != NANOARROW_OK) {
+    fclose(file);
+    return false;
+  }
+
+  // 创建 writer
+  nanoarrow::ipc::UniqueWriter writer;
+  if (ArrowIpcWriterInit(writer.get(), output_stream.get()) != NANOARROW_OK) {
+    return false;
+  }
+
+  if (ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error) != NANOARROW_OK) {
+    return false;
+  }
+
+  return true;
+}
 
 int main() {
-  auto schema = arrow::schema({arrow::field("id", arrow::int32()), arrow::field("age", arrow::int32())});
+  // 使用更简洁的方式创建 schema
+  nanoarrow::UniqueSchema schema;
 
-  // 创建第一个 batch
-  std::shared_ptr<arrow::Array> id_array1;
-  std::shared_ptr<arrow::Array> age_array1;
-  arrow::Int32Builder id_builder1, age_builder1;
-  id_builder1.AppendValues({1, 2, 3, 4, 5});
-  age_builder1.AppendValues({21, 22, 23, 24, 25});
-  id_builder1.Finish(&id_array1);
-  age_builder1.Finish(&age_array1);
-  auto batch1 = arrow::RecordBatch::Make(schema, 5, {id_array1, age_array1});
+  // 直接创建 struct schema，一次性设置所有属性
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT));
 
-  // 创建第二个 batch
-  std::shared_ptr<arrow::Array> id_array2;
-  std::shared_ptr<arrow::Array> age_array2;
-  arrow::Int32Builder id_builder2, age_builder2;
-  id_builder2.AppendValues({6, 7, 8, 9, 10});
-  age_builder2.AppendValues({26, 27, 28, 29, 30});
-  id_builder2.Finish(&id_array2);
-  age_builder2.Finish(&age_array2);
-  auto batch2 = arrow::RecordBatch::Make(schema, 5, {id_array2, age_array2});
+  // 分配并设置子列
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema.get(), 2));
 
-  quill::Backend::start();
-  auto logger =
-      quill::Frontend::create_or_get_logger("default", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink"));
+  // 设置列1：long类型
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT64));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "col1"));
 
-  auto db = mmap_db::arrow::ArrowDB("arrow_db");
-  db.create(2, 1, 10, schema);
-  auto writer1 = db.writer(0);
-  auto writer2 = db.writer(1);
-  auto reader = db.reader();
-  std::shared_ptr<arrow::RecordBatch> result;
-  writer1.write(batch1);
-  result = reader.read();
-  if (nullptr != result) {
-    quill::error(logger, "result is not null");
-    return 1;
-  }
-  writer2.write(batch2);
-  result = reader.read();
-  if (nullptr == result) {
-    quill::error(logger, "result is null");
-    return 1;
-  }
-  quill::info(logger, "result:\n{}", result->ToString());
+  // 设置列2：unsigned int类型
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema->children[1], NANOARROW_TYPE_UINT32));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[1], "col2"));
 
-  return 0;
+  // 写入文件
+  bool success = WriteSchemaToFile("schema.arrow", schema);
+
+  return success ? 0 : 1;
 }

@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <benchmark/benchmark.h>
 #include <quill/Backend.h>
 #include <quill/Frontend.h>
@@ -15,25 +17,137 @@ const auto SCHEMA = arrow::schema([]() {
   return fields;
 }());
 
-mmap_db::arrow::ArrowDB init_db(const std::string& name, int array_length, int capacity) {
-  auto db = mmap_db::arrow::ArrowDB(name);
-  db.create(1, capacity, array_length, SCHEMA);
-  return db;
-}
-
-static void BM_Read10(benchmark::State& state) {
+static void BM_ReaderBase(benchmark::State& state) {
   auto array_length = BATCH_SIZE;
   auto capacity = BATCH_SIZE / array_length;
-  auto db = init_db("benchmark_arrow_db", array_length, capacity);
+  auto db = mmap_db::arrow::ArrowDB("benchmark_reader_base");
+  db.create(1, capacity, array_length, SCHEMA);
   auto reader = db.reader();
+  auto& fields = SCHEMA->fields();
+  auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
+
   for (auto _ : state) {
-    for (auto i = 0; i < capacity; i++) {
-      reader.read(i);
+    auto field_id = 0;
+    auto data_addr = reader.data_addr();
+
+    for (const auto& field : fields) {
+      const auto field_array_size = field->type()->byte_width() * array_length;
+      // auto array_buffer = ::arrow::Buffer(reinterpret_cast<const uint8_t*>(data_addr), field_array_size);
+      // auto array_data = ::arrow::ArrayData::Make(
+      //     field->type(), array_length,
+      //     {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr),
+      //     field_array_size)});
+      // arrays[field_id] = ::arrow::MakeArray(array_data);
     }
   }
 }
 
-BENCHMARK(BM_Read10)->Iterations(10);
+class Buffer : public ::arrow::Buffer {
+ public:
+  Buffer(const uint8_t* data, int64_t size) {
+    is_cpu_ = true;
+    data_ = data;
+    size_ = size;
+    capacity_ = size;
+    device_type_ = ::arrow::DeviceAllocationType::kCPU;
+  }
+};
+
+static void BM_Reader(benchmark::State& state) {
+  auto array_length = BATCH_SIZE;
+  auto capacity = BATCH_SIZE / array_length;
+  auto db = mmap_db::arrow::ArrowDB("benchmark_reader");
+  db.create(1, capacity, array_length, SCHEMA);
+  auto reader = db.reader();
+  auto& fields = SCHEMA->fields();
+  auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
+
+  std::allocator<::arrow::Buffer> allocator;
+
+  for (auto _ : state) {
+    auto field_id = 0;
+    auto data_addr = reader.data_addr();
+
+    for (const auto& field : fields) {
+      const auto field_array_size = field->type()->byte_width() * array_length;
+      auto array_buffer = Buffer(reinterpret_cast<const uint8_t*>(data_addr), field_array_size);
+      // auto array_buffer = std::allocate_shared<::arrow::Buffer>(allocator, reinterpret_cast<const
+      // uint8_t*>(data_addr),
+      //                                                           field_array_size);
+      // auto array_buffer =
+      //     std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr), field_array_size);
+      // auto array_data = ::arrow::ArrayData::Make(
+      //     field->type(), array_length,
+      //     {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr),
+      //     field_array_size)});
+      // arrays[field_id] = ::arrow::MakeArray(array_data);
+      data_addr += field_array_size;
+      field_id++;
+    }
+  }
+}
+
+static void BM_ReaderMakeShared(benchmark::State& state) {
+  auto array_length = BATCH_SIZE;
+  auto capacity = BATCH_SIZE / array_length;
+  auto db = mmap_db::arrow::ArrowDB("benchmark_reader");
+  db.create(1, capacity, array_length, SCHEMA);
+  auto reader = db.reader();
+  auto& fields = SCHEMA->fields();
+  auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
+
+  for (auto _ : state) {
+    auto field_id = 0;
+    auto data_addr = reader.data_addr();
+
+    for (const auto& field : fields) {
+      const auto field_array_size = field->type()->byte_width() * array_length;
+      auto array_buffer = std::make_shared<Buffer>(reinterpret_cast<const uint8_t*>(data_addr), field_array_size);
+      // auto array_data = ::arrow::ArrayData::Make(
+      //     field->type(), array_length,
+      //     {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr),
+      //     field_array_size)});
+      // arrays[field_id] = ::arrow::MakeArray(array_data);
+      data_addr += field_array_size;
+      field_id++;
+    }
+  }
+}
+
+static void BM_ReaderMakeShared2(benchmark::State& state) {
+  auto array_length = BATCH_SIZE;
+  auto capacity = BATCH_SIZE / array_length;
+  auto db = mmap_db::arrow::ArrowDB("benchmark_reader");
+  db.create(1, capacity, array_length, SCHEMA);
+  auto reader = db.reader();
+  auto& fields = SCHEMA->fields();
+  auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
+
+  std::allocator<::arrow::Buffer> allocator;
+
+  for (auto _ : state) {
+    auto field_id = 0;
+    auto data_addr = reader.data_addr();
+
+    for (const auto& field : fields) {
+      const auto field_array_size = field->type()->byte_width() * array_length;
+      auto array_buffer =
+          std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr), field_array_size);
+      // auto array_data = ::arrow::ArrayData::Make(
+      //     field->type(), array_length,
+      //     {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(data_addr),
+      //     field_array_size)});
+      // arrays[field_id] = ::arrow::MakeArray(array_data);
+      data_addr += field_array_size;
+      field_id++;
+    }
+  }
+}
+
+BENCHMARK(BM_ReaderBase)->Iterations(100);
+BENCHMARK(BM_Reader)->Iterations(100);
+BENCHMARK(BM_ReaderMakeShared)->Iterations(100);
+BENCHMARK(BM_ReaderMakeShared2)->Iterations(100);
 
 int main(int argc, char** argv) {
   benchmark::MaybeReenterWithoutASLR(argc, argv);

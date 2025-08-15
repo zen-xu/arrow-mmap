@@ -1,8 +1,9 @@
-#ifndef MMAP_DB_ARROW_DB_HPP
-#define MMAP_DB_ARROW_DB_HPP
+#ifndef MMAP_DB_NANOARROW_DB_HPP
+#define MMAP_DB_NANOARROW_DB_HPP
 
 #include <filesystem>
 #include <fstream>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
@@ -11,34 +12,34 @@
 #include "manager.hpp"
 
 namespace mmap_db::arrow {
-struct ArrowWriterConfig {
+struct NanoArrowWriterConfig {
   int writer_flags = 0;
   int reader_flags = 0;
 };
 
-class ArrowWriter {
+class NanoArrowWriter {
  public:
-  ArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t capacity, size_t array_length,
-              std::vector<size_t> rb_column_sizes, size_t writer_count, quill::Logger* logger)
+  NanoArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t capacity,
+                  size_t array_length, std::vector<size_t> field_sizes, size_t writer_count, quill::Logger* logger)
       : data_writer_(data_writer),
         mask_writer_(mask_writer),
         writer_id_(writer_id),
         writer_count_(writer_count),
         capacity_(capacity),
         array_length_(array_length),
-        rb_size_(std::accumulate(rb_column_sizes.begin(), rb_column_sizes.end(), 0) * array_length),
-        rb_column_sizes_(rb_column_sizes),
-        rb_column_chunk_sizes_([&]() {
+        batch_size_(std::accumulate(field_sizes.begin(), field_sizes.end(), 0) * array_length),
+        field_sizes_(field_sizes),
+        field_chunk_sizes_([&]() {
           std::vector<size_t> sizes;
-          for (size_t i = 0; i < rb_column_sizes.size(); i++) {
-            sizes.push_back(rb_column_sizes[i] * array_length / writer_count);
+          for (size_t i = 0; i < field_sizes.size(); i++) {
+            sizes.push_back(field_sizes[i] * array_length / writer_count);
           }
           return sizes;
         }()),
-        rb_column_offsets_([&]() {
+        field_offsets_([&]() {
           std::vector<size_t> offsets;
-          for (size_t i = 0; i < rb_column_sizes.size(); i++) {
-            offsets.push_back(std::accumulate(rb_column_sizes.begin(), rb_column_sizes.begin() + i, 0) * array_length);
+          for (size_t i = 0; i < field_sizes.size(); i++) {
+            offsets.push_back(std::accumulate(field_sizes.begin(), field_sizes.begin() + i, 0) * array_length);
           }
           return offsets;
         }()),
@@ -47,30 +48,29 @@ class ArrowWriter {
   const std::byte* data_addr() const { return data_writer_.mmap_addr(); }
   const MmapWriter& data_writer() const { return data_writer_; }
 
-  bool write(const std::shared_ptr<::arrow::RecordBatch>& record_batch_chunk) {
-    auto ret = write(record_batch_chunk, index_);
+  bool write(const std::vector<nanoarrow::UniqueArray>& arrays) {
+    auto ret = write(arrays, index_);
     if (ret) {
       index_++;
     }
     return ret;
   }
 
-  bool write(const std::shared_ptr<::arrow::RecordBatch>& record_batch_chunk, size_t index) {
+  bool write(const std::vector<nanoarrow::UniqueArray>& arrays, size_t index) {
     if (index >= capacity_) {
       quill::error(logger_, "failed to write: index {} >= capacity {}", index, capacity_);
       return false;
     }
 
     // the address of the record batch
-    auto rb_addr = data_writer_.mmap_addr() + index * rb_size_;
+    auto rb_addr = data_writer_.mmap_addr() + index * batch_size_;
 
-    for (size_t col_id = 0; col_id < record_batch_chunk->num_columns(); col_id++) {
-      auto chunk_col_size = rb_column_chunk_sizes_[col_id];
-      auto rb_col_addr = rb_addr + rb_column_offsets_[col_id];
+    for (size_t col_id = 0; col_id < arrays.size(); col_id++) {
+      auto chunk_col_size = field_chunk_sizes_[col_id];
+      auto rb_col_addr = rb_addr + field_offsets_[col_id];
       auto rb_col_writer_addr = rb_col_addr + writer_id_ * chunk_col_size;
-      auto col_array = record_batch_chunk->column(col_id)->data();
-      auto col_array_data = col_array->buffers[1];
-      std::memcpy(rb_col_writer_addr, reinterpret_cast<uint8_t*>(col_array_data->address()), col_array_data->size());
+      auto& col_array = arrays[col_id];
+      std::memcpy(rb_col_writer_addr, col_array->buffers, field_sizes_[col_id] * array_length_);
     }
 
     // mark current writer row is written
@@ -86,18 +86,18 @@ class ArrowWriter {
   const size_t writer_count_;
   const size_t capacity_;
   const size_t array_length_;
-  const size_t rb_size_;
-  const std::vector<size_t> rb_column_sizes_;
-  const std::vector<size_t> rb_column_chunk_sizes_;
-  const std::vector<size_t> rb_column_offsets_;
+  const size_t batch_size_;
+  const std::vector<size_t> field_sizes_;
+  const std::vector<size_t> field_offsets_;
+  const std::vector<size_t> field_chunk_sizes_;
   quill::Logger* logger_;
   size_t index_ = 0;
 };
 
-class ArrowReader {
+class NanoArrowReader {
  public:
-  ArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t capacity, size_t array_length,
-              std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
+  NanoArrowReader(MmapReader data_reader, MmapReader mask_reader, size_t writer_count, size_t capacity,
+                  size_t array_length, std::shared_ptr<::arrow::Schema> schema, quill::Logger* logger)
       : data_reader_(data_reader),
         mask_reader_(mask_reader),
         writer_count_(writer_count),
@@ -159,9 +159,9 @@ class ArrowReader {
   quill::Logger* logger_;
 };
 
-class ArrowDB {
+class NanoArrowDB {
  public:
-  ArrowDB(const std::string& path, ArrowWriterConfig config = ArrowWriterConfig())
+  NanoArrowDB(const std::string& path, NanoArrowWriterConfig config = NanoArrowWriterConfig())
       : data_path_(std::filesystem::path(path) / "arrow_data.mmap"),
         mask_path_(std::filesystem::path(path) / "arrow_mask.mmap"),
         schema_path_(std::filesystem::path(path) / "arrow_schema.bin"),
@@ -268,7 +268,7 @@ class ArrowDB {
     return true;
   }
 
-  ArrowWriter writer(size_t writer_id) {
+  NanoArrowWriter writer(size_t writer_id) {
     if (writer_id >= writer_count_) {
       throw std::runtime_error(std::format("writer_id out of range: {} >= {}", writer_id, writer_count_));
     }
@@ -276,13 +276,13 @@ class ArrowDB {
     for (auto field : schema_->fields()) {
       column_bit_widths.push_back(field->type()->byte_width());
     }
-    return ArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, capacity_, array_length_,
-                       column_bit_widths, writer_count_, logger_);
+    return NanoArrowWriter(data_manager_.writer(), mask_manager_.writer(), writer_id, capacity_, array_length_,
+                           column_bit_widths, writer_count_, logger_);
   }
 
-  ArrowReader reader() {
-    return ArrowReader(data_manager_.reader(), mask_manager_.reader(), writer_count_, capacity_, array_length_, schema_,
-                       logger_);
+  NanoArrowReader reader() {
+    return NanoArrowReader(data_manager_.reader(), mask_manager_.reader(), writer_count_, capacity_, array_length_,
+                           schema_, logger_);
   }
 
  private:
@@ -299,4 +299,4 @@ class ArrowDB {
 };
 }  // namespace mmap_db::arrow
 
-#endif  // MMAP_DB_ARROW_DB_HPP
+#endif  // MMAP_DB_NANOARROW_DB_HPP

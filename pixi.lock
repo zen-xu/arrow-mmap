@@ -134,6 +134,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pure_eval-0.2.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_0_cpu.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250716-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/python-3.12.11-h9e4cc4f_0_cpython.conda
@@ -1755,6 +1756,15 @@ packages:
   license_family: APACHE
   size: 4796116
   timestamp: 1753371950984
+- conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250716-pyhd8ed1ab_0.conda
+  sha256: 6fa47a5efd8ddfc05c3edf76d129bb59ca389616ad25c3967c8c150649f8b4e4
+  md5: d4235a58799a7ff77572a0bbd9379b10
+  depends:
+  - python >=3.9,<4.0
+  license: BSD-2-Clause
+  license_family: BSD
+  size: 168273
+  timestamp: 1752673044675
 - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
   sha256: 79db7928d13fab2d892592223d7570f5061c192f27b9febd1a418427b719acc6
   md5: 12c566707c80111f9799308d9e265aef

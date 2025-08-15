@@ -25,4 +25,4 @@ target_link_libraries(main PRIVATE
     mmap_db_lib)
 
 add_subdirectory(benchmark)
-
+add_subdirectory(examples/ipc_read)

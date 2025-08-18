@@ -17,6 +17,102 @@ struct ArrowWriterConfig {
   int reader_flags = 0;
 };
 
+inline ArrowType nanoarrow_type_from_arrow_type_id(::arrow::Type::type type) {
+  switch (type) {
+    case ::arrow::Type::NA:
+      return NANOARROW_TYPE_NA;
+    case ::arrow::Type::BOOL:
+      return NANOARROW_TYPE_BOOL;
+    case ::arrow::Type::UINT8:
+      return NANOARROW_TYPE_UINT8;
+    case ::arrow::Type::INT8:
+      return NANOARROW_TYPE_INT8;
+    case ::arrow::Type::UINT16:
+      return NANOARROW_TYPE_UINT16;
+    case ::arrow::Type::INT16:
+      return NANOARROW_TYPE_INT16;
+    case ::arrow::Type::UINT32:
+      return NANOARROW_TYPE_UINT32;
+    case ::arrow::Type::INT32:
+      return NANOARROW_TYPE_INT32;
+    case ::arrow::Type::UINT64:
+      return NANOARROW_TYPE_UINT64;
+    case ::arrow::Type::INT64:
+      return NANOARROW_TYPE_INT64;
+    case ::arrow::Type::HALF_FLOAT:
+      return NANOARROW_TYPE_HALF_FLOAT;
+    case ::arrow::Type::FLOAT:
+      return NANOARROW_TYPE_FLOAT;
+    case ::arrow::Type::DOUBLE:
+      return NANOARROW_TYPE_DOUBLE;
+    case ::arrow::Type::STRING:
+      return NANOARROW_TYPE_STRING;
+    case ::arrow::Type::BINARY:
+      return NANOARROW_TYPE_BINARY;
+    case ::arrow::Type::FIXED_SIZE_BINARY:
+      return NANOARROW_TYPE_FIXED_SIZE_BINARY;
+    case ::arrow::Type::DATE32:
+      return NANOARROW_TYPE_DATE32;
+    case ::arrow::Type::DATE64:
+      return NANOARROW_TYPE_DATE64;
+    case ::arrow::Type::TIMESTAMP:
+      return NANOARROW_TYPE_TIMESTAMP;
+    case ::arrow::Type::TIME32:
+      return NANOARROW_TYPE_TIME32;
+    case ::arrow::Type::TIME64:
+      return NANOARROW_TYPE_TIME64;
+    case ::arrow::Type::INTERVAL_MONTHS:
+      return NANOARROW_TYPE_INTERVAL_MONTHS;
+    case ::arrow::Type::INTERVAL_DAY_TIME:
+      return NANOARROW_TYPE_INTERVAL_DAY_TIME;
+    case ::arrow::Type::DECIMAL128:
+      return NANOARROW_TYPE_DECIMAL128;
+    case ::arrow::Type::DECIMAL256:
+      return NANOARROW_TYPE_DECIMAL256;
+    case ::arrow::Type::LIST:
+      return NANOARROW_TYPE_LIST;
+    case ::arrow::Type::STRUCT:
+      return NANOARROW_TYPE_STRUCT;
+    case ::arrow::Type::SPARSE_UNION:
+      return NANOARROW_TYPE_SPARSE_UNION;
+    case ::arrow::Type::DENSE_UNION:
+      return NANOARROW_TYPE_DENSE_UNION;
+    case ::arrow::Type::DICTIONARY:
+      return NANOARROW_TYPE_DICTIONARY;
+    case ::arrow::Type::MAP:
+      return NANOARROW_TYPE_MAP;
+    case ::arrow::Type::EXTENSION:
+      return NANOARROW_TYPE_EXTENSION;
+    case ::arrow::Type::FIXED_SIZE_LIST:
+      return NANOARROW_TYPE_FIXED_SIZE_LIST;
+    case ::arrow::Type::DURATION:
+      return NANOARROW_TYPE_DURATION;
+    case ::arrow::Type::LARGE_STRING:
+      return NANOARROW_TYPE_LARGE_STRING;
+    case ::arrow::Type::LARGE_BINARY:
+      return NANOARROW_TYPE_LARGE_BINARY;
+    case ::arrow::Type::LARGE_LIST:
+      return NANOARROW_TYPE_LARGE_LIST;
+    case ::arrow::Type::INTERVAL_MONTH_DAY_NANO:
+      return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
+    case ::arrow::Type::RUN_END_ENCODED:
+      return NANOARROW_TYPE_RUN_END_ENCODED;
+    case ::arrow::Type::BINARY_VIEW:
+      return NANOARROW_TYPE_BINARY_VIEW;
+    case ::arrow::Type::STRING_VIEW:
+      return NANOARROW_TYPE_STRING_VIEW;
+    case ::arrow::Type::DECIMAL32:
+      return NANOARROW_TYPE_DECIMAL32;
+    case ::arrow::Type::DECIMAL64:
+      return NANOARROW_TYPE_DECIMAL64;
+    case ::arrow::Type::LIST_VIEW:
+      return NANOARROW_TYPE_LIST_VIEW;
+    case ::arrow::Type::LARGE_LIST_VIEW:
+      return NANOARROW_TYPE_LARGE_LIST_VIEW;
+    default:
+      return NANOARROW_TYPE_UNINITIALIZED;
+  }
+}
 class ArrowWriter {
  public:
   ArrowWriter(MmapWriter data_writer, MmapWriter mask_writer, size_t writer_id, size_t capacity, size_t array_length,
@@ -120,10 +216,10 @@ class ArrowReader {
     for (size_t i = 0; i < fields.size(); i++) {
       auto& field = fields[i];
       NANOARROW_THROW_NOT_OK(
-          ArrowSchemaInitFromType(nano_schema_->children[i], static_cast<ArrowType>(field->type()->id())));
+          ArrowSchemaInitFromType(nano_schema_->children[i], nanoarrow_type_from_arrow_type_id(field->type()->id())));
       NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(nano_schema_->children[i], field->name().c_str()));
       field_array_sizes_.push_back(field->type()->byte_width() * array_length_);
-      field_types_.push_back(static_cast<ArrowType>(field->type()->id()));
+      field_types_.push_back(nanoarrow_type_from_arrow_type_id(field->type()->id()));
       NANOARROW_THROW_NOT_OK(ArrowArrayInitFromType(struct_array_->children[i], field_types_[i]));
     }
   }
@@ -267,7 +363,7 @@ class ArrowDB {
       // make sure creating mask file is atomic operation
       auto mask_tmp_path = mask_path_ + ".tmp";
       auto mask_capacity = capacity * writer_count;
-      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, std::byte(0xFF))) {
+      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity)) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
         std::filesystem::remove(mask_tmp_path);
         return false;
@@ -318,6 +414,7 @@ class ArrowDB {
   std::shared_ptr<::arrow::Schema> schema_ = nullptr;
   quill::Logger* logger_;
 };
+
 }  // namespace mmap_db::arrow
 
 #endif  // MMAP_DB_ARROW_DB_HPP

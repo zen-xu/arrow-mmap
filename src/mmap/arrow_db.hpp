@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
@@ -106,43 +107,59 @@ class ArrowReader {
         rb_size_(std::accumulate(schema->fields().begin(), schema->fields().end(), 0,
                                  [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); })),
         schema_(schema),
-        logger_(logger) {}
+        logger_(logger) {
+    // init nano schema from arrow schema
+    auto& fields = schema->fields();
+    NANOARROW_THROW_NOT_OK(ArrowSchemaInitFromType(nano_schema_.get(), NANOARROW_TYPE_STRUCT));
+    NANOARROW_THROW_NOT_OK(ArrowSchemaAllocateChildren(nano_schema_.get(), fields.size()));
 
-  std::shared_ptr<::arrow::RecordBatch> read() { return read(index_); }
-  std::shared_ptr<::arrow::RecordBatch> read(size_t index) {
+    // init struct array
+    NANOARROW_THROW_NOT_OK(ArrowArrayInitFromType(struct_array_.get(), NANOARROW_TYPE_STRUCT));
+    NANOARROW_THROW_NOT_OK(ArrowArrayAllocateChildren(struct_array_.get(), fields.size()));
+
+    for (size_t i = 0; i < fields.size(); i++) {
+      auto& field = fields[i];
+      NANOARROW_THROW_NOT_OK(
+          ArrowSchemaInitFromType(nano_schema_->children[i], static_cast<ArrowType>(field->type()->id())));
+      NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(nano_schema_->children[i], field->name().c_str()));
+      field_array_sizes_.push_back(field->type()->byte_width() * array_length_);
+      field_types_.push_back(static_cast<ArrowType>(field->type()->id()));
+      NANOARROW_THROW_NOT_OK(ArrowArrayInitFromType(struct_array_->children[i], field_types_[i]));
+    }
+  }
+
+  bool read(nanoarrow::UniqueArrayStream& array_stream) { return read(array_stream, index_); }
+
+  bool read(nanoarrow::UniqueArrayStream& array_stream, size_t index) {
     if (index >= capacity_) {
-      quill::error(logger_, "failed to read: index {} >= capacity {}", index, capacity_);
-      return nullptr;
+      return false;
     }
     auto mask_size = writer_count_;
 
     auto mask_addr = mask_reader_.read(mask_size, mask_size * index);
     if (mask_addr == nullptr) {
-      return nullptr;
+      return false;
     }
     if (!std::all_of(mask_addr, mask_addr + mask_size, [](std::byte b) { return b == std::byte(0xFF); })) {
-      return nullptr;
+      return false;
     }
 
     // all writer have written this record batch
     auto rb_addr = data_reader_.mmap_addr() + index * rb_size_;
-    auto& fields = schema_->fields();
-    auto field_id = 0;
-    auto arrays = std::vector<std::shared_ptr<::arrow::Array>>(fields.size());
 
-    for (const auto& field : fields) {
-      const auto field_array_size = field->type()->byte_width() * array_length_;
-      auto array_data = ::arrow::ArrayData::Make(
-          field->type(), array_length_,
-          {nullptr, std::make_shared<::arrow::Buffer>(reinterpret_cast<const uint8_t*>(rb_addr), field_array_size)});
-      arrays[field_id] = ::arrow::MakeArray(array_data);
-      rb_addr += field_array_size;
-      field_id++;
+    for (size_t i = 0; i < field_array_sizes_.size(); i++) {
+      struct_array_->children[i]->buffers[1] = reinterpret_cast<const void*>(rb_addr);
+      struct_array_->children[i]->length = array_length_;
+      // do not release the buffer
+      struct_array_->children[i]->release = nullptr;
+      rb_addr += field_array_sizes_[i];
     }
-    return nullptr;
+
+    NANOARROW_THROW_NOT_OK(ArrowBasicArrayStreamInit(array_stream.get(), nano_schema_.get(), 1));
+    ArrowBasicArrayStreamSetArray(array_stream.get(), 0, struct_array_.get());
 
     index_ += 1;
-    return ::arrow::RecordBatch::Make(schema_, array_length_, arrays);
+    return true;
   }
 
   const std::byte* data_addr() const { return data_reader_.mmap_addr(); }
@@ -155,6 +172,10 @@ class ArrowReader {
   const size_t array_length_;
   const size_t rb_size_;
   const std::shared_ptr<::arrow::Schema> schema_;
+  std::vector<size_t> field_array_sizes_;
+  std::vector<ArrowType> field_types_;
+  nanoarrow::UniqueSchema nano_schema_;
+  nanoarrow::UniqueArray struct_array_;
   size_t index_ = 0;
   quill::Logger* logger_;
 };

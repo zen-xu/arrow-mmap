@@ -18,7 +18,7 @@ const auto SCHEMA = arrow::schema([]() {
 }());
 
 static void BM_ReaderBase(benchmark::State& state) {
-  auto array_length = 10;
+  auto array_length = 100;
   auto capacity = BATCH_SIZE / array_length;
   auto db = mmap_db::arrow::ArrowDB("benchmark_reader_base");
   db.create(1, capacity, array_length, SCHEMA);

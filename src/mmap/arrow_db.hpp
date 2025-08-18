@@ -363,7 +363,7 @@ class ArrowDB {
       // make sure creating mask file is atomic operation
       auto mask_tmp_path = mask_path_ + ".tmp";
       auto mask_capacity = capacity * writer_count;
-      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity)) {
+      if (!::mmap_db::truncate(mask_tmp_path, mask_capacity, std::byte(0xFF))) {
         quill::error(logger_, "fail to truncate mask: {}", mask_path_);
         std::filesystem::remove(mask_tmp_path);
         return false;

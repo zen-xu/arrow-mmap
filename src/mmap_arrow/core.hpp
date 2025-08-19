@@ -6,10 +6,6 @@
 
 namespace mmap_arrow {
 
-enum class ErrorCode {
-  Success = 1,
-};
-
 struct MmapManagerOptions {
   int reader_flags = 0;
   int writer_flags = 0;

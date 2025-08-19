@@ -16,9 +16,19 @@ size_t get_fd_length(int fd) {
   return st.st_size;
 }
 
+struct FdTracker {
+  int fd;
+
+  ~FdTracker() {
+    if (fd != -1) {
+      close(fd);
+    }
+  }
+};
+
 class MmapReader : public IMmapReader {
  public:
-  MmapReader(std::byte* addr, size_t length) : addr_(addr), length_(length) {}
+  MmapReader(std::byte* addr, size_t length, std::shared_ptr<FdTracker> fd) : addr_(addr), length_(length), fd_(fd) {}
   ~MmapReader() { munmap(addr_, length_); }
 
   inline size_t length() const override { return length_; }
@@ -27,11 +37,12 @@ class MmapReader : public IMmapReader {
  private:
   const size_t length_;
   std::byte* addr_;
+  std::shared_ptr<FdTracker> fd_;
 };
 
 class MmapWriter : public IMmapWriter {
  public:
-  MmapWriter(std::byte* addr, size_t length) : addr_(addr), length_(length) {}
+  MmapWriter(std::byte* addr, size_t length, std::shared_ptr<FdTracker> fd) : addr_(addr), length_(length), fd_(fd) {}
   ~MmapWriter() { munmap(addr_, length_); }
 
   inline size_t length() const override { return length_; }
@@ -40,12 +51,13 @@ class MmapWriter : public IMmapWriter {
  private:
   const size_t length_;
   std::byte* addr_;
+  std::shared_ptr<FdTracker> fd_;
 };
 
 class MmapManager::Impl {
  public:
   Impl(const std::string& file, int file_fd, size_t file_length, const MmapManagerOptions& options)
-      : file_(file), file_fd_(file_fd), file_length_(file_length), options_(options) {}
+      : file_(file), file_fd_(std::make_shared<FdTracker>(file_fd)), file_length_(file_length), options_(options) {}
 
   Impl(const std::string& file, const MmapManagerOptions& options) : file_(file), options_(options) {
     // try to open file
@@ -61,30 +73,31 @@ class MmapManager::Impl {
       throw std::runtime_error(std::format("file {} is empty", file_));
     }
 
-    file_fd_ = fd;
+    file_fd_ = std::make_shared<FdTracker>(fd);
     file_length_ = length;
   }
 
   std::shared_ptr<MmapReader> reader() {
     if (nullptr == reader_) {
-      auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_, 0);
+      auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_->fd, 0);
       if (addr == MAP_FAILED) {
         throw std::filesystem::filesystem_error("reader failed to mmap file", file_,
                                                 std::error_code(errno, std::generic_category()));
       }
-      reader_ = std::make_shared<MmapReader>(static_cast<std::byte*>(addr), file_length_);
+      reader_ = std::make_shared<MmapReader>(static_cast<std::byte*>(addr), file_length_, file_fd_);
     }
     return reader_;
   }
 
   std::shared_ptr<MmapWriter> writer() {
     if (nullptr == writer_) {
-      auto addr = ::mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_, 0);
+      auto addr =
+          ::mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_->fd, 0);
       if (addr == MAP_FAILED) {
         throw std::filesystem::filesystem_error("writer failed to mmap file", file_,
                                                 std::error_code(errno, std::generic_category()));
       }
-      writer_ = std::make_shared<MmapWriter>(static_cast<std::byte*>(addr), file_length_);
+      writer_ = std::make_shared<MmapWriter>(static_cast<std::byte*>(addr), file_length_, file_fd_);
     }
     return writer_;
   }
@@ -93,8 +106,8 @@ class MmapManager::Impl {
   const std::string file_;
   const MmapManagerOptions options_;
 
-  int file_fd_ = -1;
   int file_length_ = 0;
+  std::shared_ptr<FdTracker> file_fd_ = nullptr;
   std::shared_ptr<MmapReader> reader_ = nullptr;
   std::shared_ptr<MmapWriter> writer_ = nullptr;
 };

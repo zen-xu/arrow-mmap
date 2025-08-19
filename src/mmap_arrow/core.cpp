@@ -19,18 +19,20 @@ size_t get_fd_length(int fd) {
 class MmapReader : public IMmapReader {
  public:
   MmapReader(std::byte* addr, size_t length) : addr_(addr), length_(length) {}
+  ~MmapReader() { munmap(addr_, length_); }
 
   inline size_t length() const override { return length_; }
   inline const std::byte* mmap_addr() const override { return addr_; }
 
  private:
-  const std::byte* addr_;
   const size_t length_;
+  std::byte* addr_;
 };
 
 class MmapWriter : public IMmapWriter {
  public:
   MmapWriter(std::byte* addr, size_t length) : addr_(addr), length_(length) {}
+  ~MmapWriter() { munmap(addr_, length_); }
 
   inline size_t length() const override { return length_; }
   inline std::byte* mmap_addr() const override { return addr_; }

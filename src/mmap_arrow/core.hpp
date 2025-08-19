@@ -2,6 +2,7 @@
 #define MMAP_ARROW_CORE_HPP
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace mmap_arrow {
@@ -15,6 +16,18 @@ struct MmapManagerCreateOptions : public MmapManagerOptions {
   std::byte fill_with = std::byte(0x00);
 };
 
+class IMmapReader {
+ public:
+  virtual inline size_t length() const = 0;
+  virtual inline const std::byte* mmap_addr() const = 0;
+};
+
+class IMmapWriter {
+ public:
+  virtual inline size_t length() const = 0;
+  virtual inline std::byte* mmap_addr() const = 0;
+};
+
 class MmapManager {
  public:
   MmapManager(const std::string& file, const MmapManagerOptions& options = {});
@@ -24,6 +37,10 @@ class MmapManager {
   // disable copy and assign
   MmapManager(const MmapManager&) = delete;
   MmapManager& operator=(const MmapManager&) = delete;
+
+  // get reader or writer
+  std::shared_ptr<IMmapReader> reader() const;
+  std::shared_ptr<IMmapWriter> writer() const;
 
  private:
   class Impl;

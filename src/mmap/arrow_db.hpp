@@ -250,6 +250,7 @@ class ArrowReader {
       struct_array_->children[i]->release = nullptr;
       rb_addr += field_array_sizes_[i];
     }
+    struct_array_->length = array_length_;
 
     NANOARROW_THROW_NOT_OK(ArrowBasicArrayStreamInit(array_stream.get(), nano_schema_.get(), 1));
     ArrowBasicArrayStreamSetArray(array_stream.get(), 0, struct_array_.get());

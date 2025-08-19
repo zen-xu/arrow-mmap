@@ -1,3 +1,0 @@
-add_subdirectory(ipc_read)
-add_subdirectory(nanoarrow_reader)
-add_subdirectory(arrow_capsule)

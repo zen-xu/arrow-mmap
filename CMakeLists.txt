@@ -14,6 +14,5 @@ target_link_libraries(mmap_db_lib INTERFACE
     nanoarrow::nanoarrow
     nanoarrow::nanoarrow_ipc
 )
+
 add_subdirectory(third_party/nanoarrow)
-add_subdirectory(benchmark)
-add_subdirectory(examples)

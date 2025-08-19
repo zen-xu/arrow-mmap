@@ -1,32 +1,32 @@
 {
-    "[cpp]": {
-        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-        "editor.semanticHighlighting.enabled": true
-    },
-    "clangd.arguments": [
-        "--background-index",
-        "--clang-tidy",
-        "--completion-style=detailed",
-        "--header-insertion=never",
-    ],
-    "clangd.path": "${workspaceFolder}/.pixi/envs/default/bin/clangd",
-    "cmake.cmakePath": "${workspaceFolder}/.pixi/envs/default/bin/cmake",
-    "cmake.configureSettings": {
-        "CMAKE_MAKE_PROGRAM": "${workspaceFolder}/.pixi/envs/default/bin/ninja",
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/toolchain-clang.cmake"
-    },
-    "cmake.generator": "Ninja",
-    "cSpell.dictionaries": [
-        "cpp",
-        "cmake",
-    ],
-    "cSpell.words": [
-        "clangxx",
-        "IWYU",
-        "pixi",
-        "STRINGIZE",
-        "taplo"
-    ],
-    "editor.formatOnSave": true,
-    "python.terminal.activateEnvironment": false
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.semanticHighlighting.enabled": true
+  },
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy",
+    "--completion-style=detailed",
+    "--header-insertion=never",
+  ],
+  "clangd.path": "${workspaceFolder}/.pixi/envs/default/bin/clangd",
+  "cmake.cmakePath": "${workspaceFolder}/.pixi/envs/default/bin/cmake",
+  "cmake.configureSettings": {
+    "CMAKE_MAKE_PROGRAM": "${workspaceFolder}/.pixi/envs/default/bin/ninja",
+    "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/toolchain-clang.cmake"
+  },
+  "cmake.generator": "Ninja",
+  "cSpell.dictionaries": [
+    "cpp",
+    "cmake",
+  ],
+  "cSpell.words": [
+    "clangxx",
+    "IWYU",
+    "pixi",
+    "STRINGIZE",
+    "taplo"
+  ],
+  "editor.formatOnSave": true,
+  "python.terminal.activateEnvironment": false
 }

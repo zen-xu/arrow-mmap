@@ -46,8 +46,8 @@ ArrowManager::ArrowManager(const std::string& location, const MmapManagerOptions
 
 ArrowManager::~ArrowManager() { delete impl_; }
 
-// ArrowManager ArrowManager::create(const std::string& location, const size_t writer_count, const size_t array_length,
-//                                   const size_t capacity, const std::shared_ptr<arrow::Schema> schema,
-//                                   const MmapManagerCreateOptions& options) {}
+ArrowManager ArrowManager::create(const std::string& location, const size_t writer_count, const size_t array_length,
+                                  const size_t capacity, const std::shared_ptr<arrow::Schema> schema,
+                                  const MmapManagerCreateOptions& options) {}
 
 }  // namespace mmap_arrow

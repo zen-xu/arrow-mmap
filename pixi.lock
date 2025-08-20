@@ -67,6 +67,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libarrow-compute-21.0.0-he319acf_1_cpu.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libarrow-dataset-21.0.0-h635bf11_1_cpu.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libarrow-substrait-21.0.0-h3f74fd7_1_cpu.conda
+      - conda: https://repo.prefix.dev/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlicommon-1.1.0-hb9d3cd8_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlidec-1.1.0-hb9d3cd8_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlienc-1.1.0-hb9d3cd8_3.conda
@@ -941,6 +942,13 @@ packages:
   license_family: APACHE
   size: 514834
   timestamp: 1754309685145
+- conda: https://repo.prefix.dev/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
+  sha256: e40d0626e76d8beae478ba8c2fec63b981d15649fb70fb894d7fb0ed2280153b
+  depends:
+  - libzlib >=1.3.1,<2.0a0
+  license: MIT
+  size: 994081
+  timestamp: 1742306930826
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlicommon-1.1.0-hb9d3cd8_3.conda
   sha256: 462a8ed6a7bb9c5af829ec4b90aab322f8bcd9d8987f793e6986ea873bbd05cf
   md5: cb98af5db26e3f482bebb80ce9d947d3

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <libassert/assert.hpp>
 #include <vector>
 
 #include <arrow/io/api.h>
@@ -86,9 +87,7 @@ class ArrowManager::Impl {
 };
 
 ArrowManager::ArrowManager(const std::string& location, const MmapManagerOptions& options) {
-  if (!ready(location)) {
-    throw std::runtime_error("ArrowManager is not ready to use");
-  }
+  ASSERT(ready(location), "ArrowManager is not ready to use");
 
   auto meta_file = get_meta_file(location);
   auto meta = ArrowMeta::deserialize(meta_file);
@@ -112,25 +111,11 @@ ArrowManager ArrowManager::create(const std::string& location, const size_t writ
     std::filesystem::create_directories(location);
   }
 
-  if (writer_count == 0) {
-    throw std::runtime_error("writer_count must be greater than 0");
-  }
-
-  if (array_length == 0) {
-    throw std::runtime_error("array_length must be greater than 0");
-  }
-
-  if (capacity == 0) {
-    throw std::runtime_error("capacity must be greater than 0");
-  }
-
-  if (schema->fields().empty()) {
-    throw std::runtime_error("schema must have at least one field");
-  }
-
-  if (writer_count > array_length) {
-    throw std::runtime_error("writer_count must be less than or equal to array_length");
-  }
+  ASSERT(writer_count > 0, "writer_count must be greater than 0");
+  ASSERT(array_length > 0, "array_length must be greater than 0");
+  ASSERT(capacity > 0, "capacity must be greater than 0");
+  ASSERT(!schema->fields().empty(), "schema must have at least one field");
+  ASSERT(writer_count <= array_length, "writer_count must be less than or equal to array_length");
 
   // init data manager
   auto data_file = get_data_file(location);

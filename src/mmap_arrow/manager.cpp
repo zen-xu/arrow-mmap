@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <filesystem>
+#include <libassert/assert.hpp>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -48,10 +49,7 @@ class MmapManager::Impl {
   MmapReader* reader() {
     if (nullptr == reader_) {
       auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_, 0);
-      if (addr == MAP_FAILED) {
-        throw std::filesystem::filesystem_error("reader failed to mmap file", file_,
-                                                std::error_code(errno, std::generic_category()));
-      }
+      ASSERT(addr != MAP_FAILED, std::format("reader failed to mmap file: {}, error: {}", file_, strerror(errno)));
       reader_ = new MmapReader(static_cast<std::byte*>(addr), file_length_);
     }
     return reader_;
@@ -60,10 +58,7 @@ class MmapManager::Impl {
   MmapWriter* writer() {
     if (nullptr == writer_) {
       auto addr = ::mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_, 0);
-      if (addr == MAP_FAILED) {
-        throw std::filesystem::filesystem_error("writer failed to mmap file", file_,
-                                                std::error_code(errno, std::generic_category()));
-      }
+      ASSERT(addr != MAP_FAILED, std::format("writer failed to mmap file: {}, error: {}", file_, strerror(errno)));
       writer_ = new MmapWriter(static_cast<std::byte*>(addr), file_length_);
     }
     return writer_;
@@ -84,23 +79,15 @@ class MmapManager::Impl {
 MmapManager::MmapManager(const std::string& file, const MmapManagerOptions& options) {
   // try to open file
   int fd = open(file.c_str(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-  if (fd == -1) {
-    throw std::filesystem::filesystem_error("failed to open file", file,
-                                            std::error_code(errno, std::generic_category()));
-  }
+  ASSERT(fd != -1, std::format("failed to open file: {}, error: {}", file, strerror(errno)));
 
   size_t length = get_fd_length(fd);
-  if (length == 0) {
-    close(fd);
-    throw std::runtime_error(std::format("file {} is empty", file));
-  }
+  ASSERT(length > 0, std::format("file {} is empty", file));
   impl_ = new MmapManager::Impl(file, fd, length, options);
 }
 
 MmapManager MmapManager::create(const std::string& file, size_t length, const MmapManagerCreateOptions& options) {
-  if (length == 0) {
-    throw std::runtime_error(std::format("can't create mmap file with 0 length, file: {}", file));
-  }
+  ASSERT(length > 0, std::format("can't create mmap file with 0 length, file: {}", file));
 
   std::filesystem::path file_dir = std::filesystem::path(std::filesystem::absolute(file)).parent_path();
   if (!std::filesystem::exists(file_dir)) {
@@ -108,23 +95,13 @@ MmapManager MmapManager::create(const std::string& file, size_t length, const Mm
   }
 
   int fd = open(file.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-  if (fd == -1) {
-    throw std::filesystem::filesystem_error("failed to open file", file,
-                                            std::error_code(errno, std::generic_category()));
-  }
+  ASSERT(fd != -1, std::format("failed to open file: {}, error: {}", file, strerror(errno)));
 
-  if (ftruncate(fd, length) == -1) {
-    throw std::filesystem::filesystem_error("failed to truncate file", file,
-                                            std::error_code(errno, std::generic_category()));
-  }
+  ASSERT(ftruncate(fd, length) != -1, std::format("failed to truncate file: {}, error: {}", file, strerror(errno)));
 
   // filling the file content with `options.fill_with`
   void* addr = ::mmap(nullptr, length, PROT_WRITE, MAP_PRIVATE, fd, 0);
-  if (addr == MAP_FAILED) {
-    close(fd);
-    throw std::filesystem::filesystem_error("failed to mmap file", file,
-                                            std::error_code(errno, std::generic_category()));
-  }
+  ASSERT(addr != MAP_FAILED, std::format("failed to mmap file: {}, error: {}", file, strerror(errno)));
   std::memset(addr, static_cast<int>(options.fill_with), length);
   munmap(addr, length);
 

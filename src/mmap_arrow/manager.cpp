@@ -64,10 +64,6 @@ class MmapManager::Impl {
   }
 
   MmapReader* reader() {
-    if (file_fd_ == -1) {
-      throw std::runtime_error("MmapManager is not initialized");
-    }
-
     if (nullptr == reader_) {
       auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_, 0);
       if (addr == MAP_FAILED) {
@@ -80,10 +76,6 @@ class MmapManager::Impl {
   }
 
   MmapWriter* writer() {
-    if (file_fd_ == -1) {
-      throw std::runtime_error("MmapManager is not initialized");
-    }
-
     if (nullptr == writer_) {
       auto addr = ::mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_, 0);
       if (addr == MAP_FAILED) {

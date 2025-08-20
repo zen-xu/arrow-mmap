@@ -63,7 +63,7 @@ class MmapManager::Impl {
     file_length_ = length;
   }
 
-  std::shared_ptr<MmapReader> reader() {
+  MmapReader* reader() {
     if (file_fd_ == -1) {
       throw std::runtime_error("MmapManager is not initialized");
     }
@@ -74,12 +74,12 @@ class MmapManager::Impl {
         throw std::filesystem::filesystem_error("reader failed to mmap file", file_,
                                                 std::error_code(errno, std::generic_category()));
       }
-      reader_ = std::make_shared<MmapReader>(static_cast<std::byte*>(addr), file_length_);
+      reader_ = new MmapReader(static_cast<std::byte*>(addr), file_length_);
     }
     return reader_;
   }
 
-  std::shared_ptr<MmapWriter> writer() {
+  MmapWriter* writer() {
     if (file_fd_ == -1) {
       throw std::runtime_error("MmapManager is not initialized");
     }
@@ -90,7 +90,7 @@ class MmapManager::Impl {
         throw std::filesystem::filesystem_error("writer failed to mmap file", file_,
                                                 std::error_code(errno, std::generic_category()));
       }
-      writer_ = std::make_shared<MmapWriter>(static_cast<std::byte*>(addr), file_length_);
+      writer_ = new MmapWriter(static_cast<std::byte*>(addr), file_length_);
     }
     return writer_;
   }
@@ -101,8 +101,8 @@ class MmapManager::Impl {
 
   int file_length_ = 0;
   int file_fd_ = -1;
-  std::shared_ptr<MmapReader> reader_ = nullptr;
-  std::shared_ptr<MmapWriter> writer_ = nullptr;
+  MmapReader* reader_ = nullptr;
+  MmapWriter* writer_ = nullptr;
 };
 
 MmapManager::MmapManager(const std::string& file, const MmapManagerOptions& options)
@@ -144,6 +144,6 @@ MmapManager MmapManager::create(const std::string& file, size_t length, const Mm
 
 MmapManager::~MmapManager() { delete impl_; }
 
-std::shared_ptr<IMmapReader> MmapManager::reader() const { return impl_->reader(); }
-std::shared_ptr<IMmapWriter> MmapManager::writer() const { return impl_->writer(); }
+IMmapReader* MmapManager::reader() const { return impl_->reader(); }
+IMmapWriter* MmapManager::writer() const { return impl_->writer(); }
 }  // namespace mmap_arrow

@@ -2,7 +2,6 @@
 #define MMAP_ARROW_MMAP_MANAGER_HPP
 #pragma once
 
-#include <memory>
 #include <string>
 
 #include "interface.hpp"
@@ -28,9 +27,9 @@ class MmapManager {
   MmapManager(const MmapManager&) = delete;
   MmapManager& operator=(const MmapManager&) = delete;
 
-  // get reader or writer
-  std::shared_ptr<IMmapReader> reader() const;
-  std::shared_ptr<IMmapWriter> writer() const;
+  // since we never unmap the file, so we don't need to use shared_ptr
+  IMmapReader* reader() const;
+  IMmapWriter* writer() const;
 
  private:
   class Impl;

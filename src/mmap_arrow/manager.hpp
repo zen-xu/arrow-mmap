@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "mmap_interface.hpp"
+#include "interface.hpp"
 
 namespace mmap_arrow {
 

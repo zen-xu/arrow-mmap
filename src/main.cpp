@@ -2,7 +2,7 @@
 #include <format>
 #include <iostream>
 
-#include "mmap_arrow/mmap_manager.hpp"
+#include "mmap_arrow/manager.hpp"
 
 int main() {
   mmap_arrow::MmapManager manager = mmap_arrow::MmapManager::create("tmp.mmap", 100);

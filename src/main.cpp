@@ -2,19 +2,15 @@
 #include <format>
 #include <iostream>
 
-#include "mmap_arrow/manager.hpp"
+#include "mmap_arrow/arrow_manager.hpp"
 
 int main() {
-  mmap_arrow::MmapManager manager = mmap_arrow::MmapManager::create("tmp.mmap", 100);
-  auto reader = manager.reader();
-  auto writer = manager.writer();
-  auto writer_addr = writer->mmap_addr();
-  std::memcpy(writer_addr, "hello", 5);
-
-  auto addr = reader->mmap_addr();
-  char buf[10];
-  std::memcpy(buf, addr, 5);
-  std::print(std::cout, "buf: {}\n", buf);
+  auto meta = mmap_arrow::ArrowMeta{
+      .writer_count = 10,
+      .array_length = 100,
+      .capacity = 1000,
+      .schema = arrow::schema({arrow::field("a", arrow::int32()), arrow::field("b", arrow::float32())}),
+  };
 
   return 0;
 }

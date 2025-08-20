@@ -45,24 +45,6 @@ class MmapManager::Impl {
   Impl(const std::string& file, int file_fd, size_t file_length, const MmapManagerOptions& options)
       : file_(file), file_fd_(file_fd), file_length_(file_length), options_(options) {}
 
-  Impl(const std::string& file, const MmapManagerOptions& options) : file_(file), options_(options) {
-    // try to open file
-    int fd = open(file_.c_str(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (fd == -1) {
-      throw std::filesystem::filesystem_error("failed to open file", file_,
-                                              std::error_code(errno, std::generic_category()));
-    }
-
-    size_t length = get_fd_length(fd);
-    if (length == 0) {
-      close(fd);
-      throw std::runtime_error(std::format("file {} is empty", file_));
-    }
-
-    file_fd_ = fd;
-    file_length_ = length;
-  }
-
   MmapReader* reader() {
     if (nullptr == reader_) {
       auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_, 0);
@@ -90,15 +72,28 @@ class MmapManager::Impl {
  private:
   const std::string file_;
   const MmapManagerOptions options_;
+  const int file_length_;
+  const int file_fd_;
 
-  int file_length_ = 0;
-  int file_fd_ = -1;
   MmapReader* reader_ = nullptr;
   MmapWriter* writer_ = nullptr;
 };
 
-MmapManager::MmapManager(const std::string& file, const MmapManagerOptions& options)
-    : impl_(new MmapManager::Impl(file, options)) {}
+MmapManager::MmapManager(const std::string& file, const MmapManagerOptions& options) {
+  // try to open file
+  int fd = open(file.c_str(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  if (fd == -1) {
+    throw std::filesystem::filesystem_error("failed to open file", file,
+                                            std::error_code(errno, std::generic_category()));
+  }
+
+  size_t length = get_fd_length(fd);
+  if (length == 0) {
+    close(fd);
+    throw std::runtime_error(std::format("file {} is empty", file));
+  }
+  impl_ = new MmapManager::Impl(file, fd, length, options);
+}
 
 MmapManager MmapManager::create(const std::string& file, size_t length, const MmapManagerCreateOptions& options) {
   if (length == 0) {

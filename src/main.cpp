@@ -12,5 +12,8 @@ int main() {
       .schema = arrow::schema({arrow::field("a", arrow::int32()), arrow::field("b", arrow::float32())}),
   };
 
+  meta.serialize("meta.bin");
+  auto meta2 = mmap_arrow::ArrowMeta::deserialize("meta.bin");
+  std::cout << meta2.to_string() << std::endl;
   return 0;
 }

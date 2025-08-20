@@ -19,5 +19,8 @@ add_executable(main
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${MMAP_SOURCES}
 )
+target_link_libraries(
+  main PRIVATE ${PROJECT_NAME} Arrow::arrow_shared
+)
 
 add_subdirectory(third_party/nanoarrow)

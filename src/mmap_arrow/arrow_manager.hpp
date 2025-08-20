@@ -27,6 +27,14 @@ struct ArrowMeta {
 class ArrowManager {
  public:
   ArrowManager(const std::string& location, const MmapManagerOptions& options = {});
+  ~ArrowManager();
+
+  // disable copy and assign
+  ArrowManager(const ArrowManager&) = delete;
+  ArrowManager& operator=(const ArrowManager&) = delete;
+
+  // support move
+  ArrowManager(ArrowManager&& other) noexcept : impl_(other.impl_) { other.impl_ = nullptr; }
 
   /**
    * @brief ArrowManager manages Arrow data in mmap format.
@@ -40,14 +48,26 @@ class ArrowManager {
   static ArrowManager create(const std::string& location, const size_t writer_count, const size_t array_length,
                              const size_t capacity, const std::shared_ptr<arrow::Schema> schema,
                              const MmapManagerCreateOptions& options = {});
-  ~ArrowManager();
 
-  // disable copy and assign
-  ArrowManager(const ArrowManager&) = delete;
-  ArrowManager& operator=(const ArrowManager&) = delete;
+  /**
+   * @brief Check if the ArrowManager is ready to use.
+   *
+   * @param location The directory where mmap files are stored.
+   * @return true if the ArrowManager is ready to use, false otherwise.
+   */
+  static inline bool ready(const std::string& location) noexcept;
+
+  /**
+   * @brief Get the meta of the ArrowManager.
+   *
+   * @return The meta of the ArrowManager.
+   */
+  const ArrowMeta& meta() const noexcept;
 
  private:
   class Impl;
+  friend class Impl;
+
   ArrowManager(Impl* impl) : impl_(impl) {}
 
   Impl* impl_;

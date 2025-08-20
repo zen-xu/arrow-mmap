@@ -27,12 +27,17 @@ class MmapManager {
   MmapManager(const MmapManager&) = delete;
   MmapManager& operator=(const MmapManager&) = delete;
 
+  // support move
+  MmapManager(MmapManager&& other) noexcept : impl_(other.impl_) { other.impl_ = nullptr; }
+
   // since we never unmap the file, so we don't need to use shared_ptr
   IMmapReader* reader() const;
   IMmapWriter* writer() const;
 
  private:
   class Impl;
+  friend class Impl;
+
   MmapManager(Impl* impl) : impl_(impl) {}
 
   Impl* impl_;

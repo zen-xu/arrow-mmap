@@ -70,6 +70,8 @@ class MmapManager::Impl {
   }
 
  private:
+  friend class MmapManager;
+
   const std::string file_;
   const MmapManagerOptions options_;
   const int file_length_;
@@ -129,8 +131,12 @@ MmapManager MmapManager::create(const std::string& file, size_t length, const Mm
   return MmapManager(new MmapManager::Impl(file, fd, length, options));
 }
 
-MmapManager::~MmapManager() { delete impl_; }
+MmapManager::~MmapManager() {
+  if (impl_) {
+    delete impl_;
+  }
+}
 
-IMmapReader* MmapManager::reader() const { return impl_->reader(); }
-IMmapWriter* MmapManager::writer() const { return impl_->writer(); }
+IMmapReader* MmapManager::reader() const { return impl_->reader_; }
+IMmapWriter* MmapManager::writer() const { return impl_->writer_; }
 }  // namespace mmap_arrow

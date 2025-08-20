@@ -112,6 +112,26 @@ ArrowManager ArrowManager::create(const std::string& location, const size_t writ
     std::filesystem::create_directories(location);
   }
 
+  if (writer_count == 0) {
+    throw std::runtime_error("writer_count must be greater than 0");
+  }
+
+  if (array_length == 0) {
+    throw std::runtime_error("array_length must be greater than 0");
+  }
+
+  if (capacity == 0) {
+    throw std::runtime_error("capacity must be greater than 0");
+  }
+
+  if (schema->fields().empty()) {
+    throw std::runtime_error("schema must have at least one field");
+  }
+
+  if (writer_count > array_length) {
+    throw std::runtime_error("writer_count must be less than or equal to array_length");
+  }
+
   // init data manager
   auto data_file = get_data_file(location);
   auto data_length = capacity * array_length *

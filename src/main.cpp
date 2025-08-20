@@ -1,7 +1,8 @@
 #include <cstring>
 #include <format>
 #include <iostream>
-#include <mmap_arrow/core.hpp>
+
+#include "mmap_arrow/mmap_manager.hpp"
 
 int main() {
   mmap_arrow::MmapManager manager = mmap_arrow::MmapManager::create("tmp.mmap", 100);

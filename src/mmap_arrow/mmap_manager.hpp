@@ -1,9 +1,11 @@
-#ifndef MMAP_ARROW_CORE_HPP
-#define MMAP_ARROW_CORE_HPP
+#ifndef MMAP_ARROW_MMAP_MANAGER_HPP
+#define MMAP_ARROW_MMAP_MANAGER_HPP
 #pragma once
 
 #include <memory>
 #include <string>
+
+#include "mmap_interface.hpp"
 
 namespace mmap_arrow {
 
@@ -14,18 +16,6 @@ struct MmapManagerOptions {
 
 struct MmapManagerCreateOptions : public MmapManagerOptions {
   std::byte fill_with = std::byte(0x00);
-};
-
-class IMmapReader {
- public:
-  virtual inline size_t length() const = 0;
-  virtual inline const std::byte* mmap_addr() const = 0;
-};
-
-class IMmapWriter {
- public:
-  virtual inline size_t length() const = 0;
-  virtual inline std::byte* mmap_addr() const = 0;
 };
 
 class MmapManager {
@@ -48,6 +38,7 @@ class MmapManager {
 
   Impl* impl_;
 };
+
 }  // namespace mmap_arrow
 
 #endif

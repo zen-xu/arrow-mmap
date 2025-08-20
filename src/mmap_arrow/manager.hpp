@@ -31,8 +31,8 @@ class MmapManager {
   MmapManager(MmapManager&& other) noexcept : impl_(other.impl_) { other.impl_ = nullptr; }
 
   // since we never unmap the file, so we don't need to use shared_ptr
-  IMmapReader* reader() const;
-  IMmapWriter* writer() const;
+  IMmapReader* reader() const noexcept;
+  IMmapWriter* writer() const noexcept;
 
  private:
   class Impl;

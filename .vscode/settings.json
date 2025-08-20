@@ -16,6 +16,9 @@
     "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/toolchain-clang.cmake"
   },
   "cmake.generator": "Ninja",
+  "cmake.environment": {
+    "PATH": "${workspaceFolder}/.pixi/envs/default/bin:${env:PATH}"
+  },
   "cSpell.dictionaries": [
     "cpp",
     "cmake",

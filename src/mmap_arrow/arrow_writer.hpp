@@ -12,10 +12,11 @@ namespace mmap_arrow {
 class ArrowWriter {
  public:
   ArrowWriter(const size_t id, const ArrowMeta meta, const IMmapWriter* data_writer, const IMmapWriter* bitmap_writer);
-  bool write(const std::shared_ptr<arrow::RecordBatch>& batch);
-  bool write(const std::shared_ptr<arrow::RecordBatch>& batch, size_t index);
 
-  size_t current_index() const noexcept { return index_; }
+  bool write(const std::shared_ptr<arrow::RecordBatch>& batch);
+  bool write(const std::shared_ptr<arrow::RecordBatch>& batch, const size_t index);
+
+  const size_t current_index() const noexcept { return index_; }
 
   const size_t write_rows;
   const size_t id;

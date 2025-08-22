@@ -49,7 +49,7 @@ bool ArrowWriter::write(const std::shared_ptr<arrow::RecordBatch>& batch) {
   return ret;
 }
 
-bool ArrowWriter::write(const std::shared_ptr<arrow::RecordBatch>& batch, size_t index) {
+bool ArrowWriter::write(const std::shared_ptr<arrow::RecordBatch>& batch, const size_t index) {
   ASSERT(index < meta_.capacity, "index out of range, index: {}, capacity: {}", index, meta_.capacity);
   ASSERT(batch->schema()->Equals(meta_.schema), "batch schema is not equal to meta schema");
   ASSERT(batch->num_rows() == write_rows, "batch num_rows: {} != write_rows: {}", batch->num_rows(), write_rows);

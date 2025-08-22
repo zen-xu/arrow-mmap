@@ -8,6 +8,8 @@ set(NANOARROW_IPC ON)
 find_package(Arrow REQUIRED)
 find_package(libassert REQUIRED)
 
+add_subdirectory(third_party/nanoarrow)
+
 file(GLOB_RECURSE MMAP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/mmap_arrow/*.cpp")
 
 add_library(${PROJECT_NAME} INTERFACE)
@@ -24,6 +26,6 @@ target_link_libraries(
   ${PROJECT_NAME}
   Arrow::arrow_shared
   libassert::assert
+  nanoarrow::nanoarrow
+  nanoarrow::nanoarrow_ipc
 )
-
-add_subdirectory(third_party/nanoarrow)

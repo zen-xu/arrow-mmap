@@ -155,7 +155,24 @@ bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream) {
 bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream, const size_t index) {
   ASSERT(index < meta_.capacity, "index out of range, index: {}, capacity: {}", index, meta_.capacity);
 
-  auto readies = meta_.writer_count;
+  auto bitmap_addr = bitmap_reader_->mmap_addr() + index * meta_.writer_count;
+  if (!std::all_of(bitmap_addr, bitmap_addr + meta_.writer_count,
+                   [](const std::byte& b) { return b == std::byte(0xff); })) {
+    return false;
+  }
+
+  auto data_addr = data_reader_->mmap_addr() + index * batch_size_;
+  for (size_t i = 0; i < col_sizes_.size(); i++) {
+    struct_array_->children[i]->buffers[1] = reinterpret_cast<const void*>(data_addr);
+    struct_array_->children[i]->length = meta_.array_length;
+    // do not release the buffer
+    struct_array_->children[i]->release = nullptr;
+    data_addr += col_sizes_[i];
+  }
+  struct_array_->length = meta_.array_length;
+
+  NANOARROW_THROW_NOT_OK(ArrowBasicArrayStreamInit(stream.get(), schema_.get(), 1));
+  ArrowBasicArrayStreamSetArray(stream.get(), 0, struct_array_.get());
 
   return true;
 }

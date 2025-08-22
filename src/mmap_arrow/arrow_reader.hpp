@@ -24,9 +24,9 @@ class ArrowReader {
   const size_t batch_size_;
   const std::vector<size_t> col_sizes_;
   const std::vector<ArrowType> col_types_;
-  const nanoarrow::UniqueSchema schema_;
 
   size_t index_ = 0;
+  nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray struct_array_;
 };
 }  // namespace mmap_arrow

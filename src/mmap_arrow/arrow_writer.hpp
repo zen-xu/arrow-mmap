@@ -42,7 +42,8 @@ class ArrowWriter {
         col_array_offsets_([&]() {
           std::vector<size_t> col_array_offsets;
           for (size_t i = 0; i < col_sizes_.size(); i++) {
-            col_array_offsets.push_back(std::accumulate(col_sizes_.begin(), col_sizes_.begin() + i, 0) * write_rows);
+            col_array_offsets.push_back(std::accumulate(col_sizes_.begin(), col_sizes_.begin() + i, 0) *
+                                        meta_.array_length);
           }
           return col_array_offsets;
         }()),

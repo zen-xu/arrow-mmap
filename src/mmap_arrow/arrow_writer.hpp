@@ -20,7 +20,7 @@ class ArrowWriter {
           if (id < meta.writer_count - 1) {
             return meta.array_length / meta.writer_count;
           } else {
-            return meta.array_length - meta.array_length / meta.writer_count * meta.writer_count;
+            return meta.array_length - meta.array_length / meta.writer_count * (meta.writer_count - 1);
           }
         }()),
         col_sizes_([&]() {
@@ -50,6 +50,8 @@ class ArrowWriter {
 
   bool write(const std::shared_ptr<arrow::RecordBatch>& batch);
   bool write(const std::shared_ptr<arrow::RecordBatch>& batch, size_t index);
+
+  size_t current_index() const noexcept { return index_; }
 
   const size_t write_rows;
   const size_t id;

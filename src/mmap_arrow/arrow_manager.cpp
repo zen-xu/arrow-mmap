@@ -27,9 +27,7 @@ class ArrowManager::Impl {
         writers_(std::vector<std::shared_ptr<ArrowWriter>>(meta.writer_count)) {}
 
   const std::shared_ptr<ArrowWriter> writer(const size_t id) noexcept {
-    if (id >= meta_.writer_count) {
-      return nullptr;
-    }
+    ASSERT(id < meta_.writer_count, "id out of range, id: {}, writer_count: {}", id, meta_.writer_count);
     auto writer = writers_[id];
     if (nullptr == writer) {
       writer = std::make_shared<ArrowWriter>(id, meta_, data_manager_.writer(), bitmap_manager_.writer());

@@ -2,27 +2,13 @@
 #define MMAP_ARROW_ARROW_MANAGER_HPP
 #pragma once
 
-#include <fstream>
-
 #include <arrow/api.h>
 
+#include "mmap_arrow/arrow_meta.hpp"
+#include "mmap_arrow/arrow_writer.hpp"
 #include "mmap_arrow/manager.hpp"
 
 namespace mmap_arrow {
-
-struct ArrowMeta {
-  size_t writer_count;
-  size_t array_length;
-  size_t capacity;
-  std::shared_ptr<arrow::Schema> schema;
-
-  std::string to_string() const;
-
-  void serialize(std::ofstream& ofs) const;
-  void serialize(const std::string& output_file) const;
-  static ArrowMeta deserialize(std::ifstream& ifs);
-  static ArrowMeta deserialize(const std::string& input_file);
-};
 
 class ArrowManager {
  public:
@@ -63,6 +49,14 @@ class ArrowManager {
    * @return The meta of the ArrowManager.
    */
   const ArrowMeta& meta() const noexcept;
+
+  /**
+   * @brief Get the ArrowWriter of the ArrowManager.
+   *
+   * @param id The id of the ArrowWriter.
+   * @return The ArrowWriter of the ArrowManager.
+   */
+  const std::shared_ptr<ArrowWriter> writer(const size_t id) noexcept;
 
  private:
   class Impl;

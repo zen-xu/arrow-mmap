@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "mmap_arrow/arrow_manager.hpp"
+#include "mmap_arrow/arrow_meta.hpp"
 
 int main() {
   auto manager = mmap_arrow::ArrowManager::create(

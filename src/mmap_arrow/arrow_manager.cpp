@@ -1,65 +1,10 @@
 #include "arrow_manager.hpp"
 
 #include <filesystem>
-#include <fstream>
 #include <libassert/assert.hpp>
 #include <vector>
 
-#include <arrow/io/api.h>
-#include <arrow/ipc/api.h>
-
 namespace mmap_arrow {
-
-std::string ArrowMeta::to_string() const {
-  return std::format("writer_count: {}\narray_length: {}\ncapacity: {}\nschema:\n{}", writer_count, array_length,
-                     capacity, [&] {
-                       std::string schema_str = schema->ToString();
-                       std::string indented;
-                       size_t pos = 0, prev = 0;
-                       while ((pos = schema_str.find('\n', prev)) != std::string::npos) {
-                         indented += "  " + schema_str.substr(prev, pos - prev + 1);
-                         prev = pos + 1;
-                       }
-                       if (prev < schema_str.size()) {
-                         indented += "  " + schema_str.substr(prev);
-                       }
-                       return indented;
-                     }());
-}
-
-void ArrowMeta::serialize(std::ofstream& ofs) const {
-  auto schema_buffer = arrow::ipc::SerializeSchema(*schema).ValueOrDie();
-  ofs.write(reinterpret_cast<const char*>(&writer_count), sizeof(size_t));
-  ofs.write(reinterpret_cast<const char*>(&array_length), sizeof(size_t));
-  ofs.write(reinterpret_cast<const char*>(&capacity), sizeof(size_t));
-  ofs.write(reinterpret_cast<const char*>(schema_buffer->data()), schema_buffer->size());
-}
-
-void ArrowMeta::serialize(const std::string& output_file) const {
-  std::ofstream ofs(output_file, std::ios::binary);
-  serialize(ofs);
-  ofs.close();
-}
-
-ArrowMeta ArrowMeta::deserialize(std::ifstream& ifs) {
-  ArrowMeta meta;
-  ifs.read(reinterpret_cast<char*>(&meta.writer_count), sizeof(size_t));
-  ifs.read(reinterpret_cast<char*>(&meta.array_length), sizeof(size_t));
-  ifs.read(reinterpret_cast<char*>(&meta.capacity), sizeof(size_t));
-
-  std::vector<char> schema_data(std::istreambuf_iterator<char>(ifs), {});
-  auto schema_buffer = arrow::Buffer::FromString(std::string(schema_data.begin(), schema_data.end()));
-  auto reader = arrow::io::BufferReader(schema_buffer);
-  meta.schema = arrow::ipc::ReadSchema(&reader, nullptr).ValueOrDie();
-  return meta;
-}
-
-ArrowMeta ArrowMeta::deserialize(const std::string& input_file) {
-  std::ifstream ifs(input_file, std::ios::binary);
-  auto meta = deserialize(ifs);
-  ifs.close();
-  return meta;
-}
 
 const std::string get_data_file(const std::string& location) {
   return std::filesystem::path(std::filesystem::absolute(location)) / "data.mmap";
@@ -76,7 +21,22 @@ const std::string get_meta_file(const std::string& location) {
 class ArrowManager::Impl {
  public:
   Impl(MmapManager&& data_manager, MmapManager&& bitmap_manager, const ArrowMeta meta)
-      : data_manager_(std::move(data_manager)), bitmap_manager_(std::move(bitmap_manager)), meta_(meta) {}
+      : data_manager_(std::move(data_manager)),
+        bitmap_manager_(std::move(bitmap_manager)),
+        meta_(meta),
+        writers_(std::vector<std::shared_ptr<ArrowWriter>>(meta.writer_count)) {}
+
+  const std::shared_ptr<ArrowWriter> writer(const size_t id) noexcept {
+    if (id >= meta_.writer_count) {
+      return nullptr;
+    }
+    auto writer = writers_[id];
+    if (nullptr == writer) {
+      writer = std::make_shared<ArrowWriter>(id, meta_, data_manager_.writer(), bitmap_manager_.writer());
+      writers_[id] = writer;
+    }
+    return writer;
+  }
 
  private:
   friend class ArrowManager;
@@ -84,6 +44,7 @@ class ArrowManager::Impl {
   const MmapManager data_manager_;
   const MmapManager bitmap_manager_;
   const ArrowMeta meta_;
+  std::vector<std::shared_ptr<ArrowWriter>> writers_;
 };
 
 ArrowManager::ArrowManager(const std::string& location, const MmapManagerOptions& options) {
@@ -152,5 +113,7 @@ inline bool ArrowManager::ready(const std::string& location) noexcept {
 }
 
 const ArrowMeta& ArrowManager::meta() const noexcept { return impl_->meta_; }
+
+const std::shared_ptr<ArrowWriter> ArrowManager::writer(const size_t id) noexcept { return impl_->writer(id); }
 
 }  // namespace mmap_arrow

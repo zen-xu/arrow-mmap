@@ -114,6 +114,6 @@ MmapManager::~MmapManager() {
   }
 }
 
-IMmapReader* MmapManager::reader() const noexcept { return impl_->reader_; }
-IMmapWriter* MmapManager::writer() const noexcept { return impl_->writer_; }
+IMmapReader* MmapManager::reader() const noexcept { return impl_->reader(); }
+IMmapWriter* MmapManager::writer() const noexcept { return impl_->writer(); }
 }  // namespace mmap_arrow

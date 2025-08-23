@@ -167,7 +167,7 @@ bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream, const size_t index)
     struct_array_->children[i]->length = meta_.array_length;
     // do not release the buffer
     struct_array_->children[i]->release = nullptr;
-    data_addr += col_sizes_[i];
+    data_addr += col_sizes_[i] * meta_.array_length;
   }
   struct_array_->length = meta_.array_length;
 

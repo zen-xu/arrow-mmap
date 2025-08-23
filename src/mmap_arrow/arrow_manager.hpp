@@ -5,6 +5,7 @@
 #include <arrow/api.h>
 
 #include "mmap_arrow/arrow_meta.hpp"
+#include "mmap_arrow/arrow_reader.hpp"
 #include "mmap_arrow/arrow_writer.hpp"
 #include "mmap_arrow/manager.hpp"
 
@@ -57,6 +58,13 @@ class ArrowManager {
    * @return The ArrowWriter of the ArrowManager.
    */
   const std::shared_ptr<ArrowWriter> writer(const size_t id) noexcept;
+
+  /**
+   * @brief Get the ArrowReader of the ArrowManager.
+   *
+   * @return The ArrowReader of the ArrowManager.
+   */
+  const std::shared_ptr<ArrowReader> reader() noexcept;
 
  private:
   class Impl;

@@ -36,6 +36,13 @@ class ArrowManager::Impl {
     return writer;
   }
 
+  const std::shared_ptr<ArrowReader> reader() noexcept {
+    if (nullptr == reader_) {
+      reader_ = std::make_shared<ArrowReader>(meta_, data_manager_.reader(), bitmap_manager_.reader());
+    }
+    return reader_;
+  }
+
  private:
   friend class ArrowManager;
 
@@ -43,6 +50,7 @@ class ArrowManager::Impl {
   const MmapManager bitmap_manager_;
   const ArrowMeta meta_;
   std::vector<std::shared_ptr<ArrowWriter>> writers_;
+  std::shared_ptr<ArrowReader> reader_;
 };
 
 ArrowManager::ArrowManager(const std::string& location, const MmapManagerOptions& options) {
@@ -113,5 +121,6 @@ inline bool ArrowManager::ready(const std::string& location) noexcept {
 const ArrowMeta& ArrowManager::meta() const noexcept { return impl_->meta_; }
 
 const std::shared_ptr<ArrowWriter> ArrowManager::writer(const size_t id) noexcept { return impl_->writer(id); }
+const std::shared_ptr<ArrowReader> ArrowManager::reader() noexcept { return impl_->reader(); }
 
 }  // namespace mmap_arrow

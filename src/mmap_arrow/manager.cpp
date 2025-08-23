@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <filesystem>
+#include <iostream>
 #include <libassert/assert.hpp>
 
 #include <fcntl.h>
@@ -100,7 +101,7 @@ MmapManager MmapManager::create(const std::string& file, size_t length, const Mm
   ASSERT(ftruncate(fd, length) != -1, std::format("failed to truncate file: {}, error: {}", file, strerror(errno)));
 
   // filling the file content with `options.fill_with`
-  void* addr = ::mmap(nullptr, length, PROT_WRITE, MAP_PRIVATE, fd, 0);
+  void* addr = ::mmap(nullptr, length, PROT_WRITE, MAP_SHARED, fd, 0);
   ASSERT(addr != MAP_FAILED, std::format("failed to mmap file: {}, error: {}", file, strerror(errno)));
   std::memset(addr, static_cast<int>(options.fill_with), length);
   munmap(addr, length);

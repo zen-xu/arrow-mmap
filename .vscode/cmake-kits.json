@@ -4,6 +4,13 @@
         "compilers": {
             "CC": "${workspaceFolder}/.pixi/envs/default/bin/clang",
             "CXX": "${workspaceFolder}/.pixi/envs/default/bin/clang++"
+        },
+        "environmentVariables": {
+            "PATH": "${workspaceFolder}/.pixi/envs/default/bin:${env:PATH}"
+        },
+        "toolchainFile": "${workspaceFolder}/toolchain-clang.cmake",
+        "preferredGenerator": {
+            "name": "Ninja"
         }
     }
 ]

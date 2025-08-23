@@ -11,14 +11,6 @@
   ],
   "clangd.path": "${workspaceFolder}/.pixi/envs/default/bin/clangd",
   "cmake.cmakePath": "${workspaceFolder}/.pixi/envs/default/bin/cmake",
-  "cmake.configureSettings": {
-    "CMAKE_MAKE_PROGRAM": "${workspaceFolder}/.pixi/envs/default/bin/ninja",
-    "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/toolchain-clang.cmake"
-  },
-  "cmake.generator": "Ninja",
-  "cmake.environment": {
-    "PATH": "${workspaceFolder}/.pixi/envs/default/bin:${env:PATH}"
-  },
   "cSpell.dictionaries": [
     "cpp",
     "cmake",

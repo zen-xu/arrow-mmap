@@ -30,3 +30,5 @@ add_executable(main
 target_link_libraries(main PRIVATE
   ${PROJECT_NAME}
 )
+
+add_subdirectory(benchmark)

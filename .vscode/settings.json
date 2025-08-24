@@ -11,17 +11,14 @@
   ],
   "clangd.path": "${workspaceFolder}/.pixi/envs/default/bin/clangd",
   "cmake.cmakePath": "${workspaceFolder}/.pixi/envs/default/bin/cmake",
-  "cSpell.dictionaries": [
-    "cpp",
-    "cmake",
-  ],
-  "cSpell.words": [
-    "clangxx",
-    "IWYU",
-    "pixi",
-    "STRINGIZE",
-    "taplo"
-  ],
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "CMakeLists.txt",
+        "cmd": "${workspaceFolder}/.pixi/envs/default/bin/cmake-format -i ${file}"
+      }
+    ]
+  },
   "editor.formatOnSave": true,
-  "python.terminal.activateEnvironment": false
+  "python.terminal.activateEnvironment": false,
 }

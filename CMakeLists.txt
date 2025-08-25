@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(
   nanoarrow
   GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-  GIT_TAG apache-arrow-nanoarrow-0.6.0
+  GIT_TAG apache-arrow-nanoarrow-0.7.0
 )
 FetchContent_MakeAvailable(nanoarrow)
 

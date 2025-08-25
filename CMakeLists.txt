@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.31)
 
-project(mmap_arrow)
+project(arrow-mmap)
 
 set(CMAKE_CXX_STANDARD 23)
 set(NANOARROW_IPC ON)

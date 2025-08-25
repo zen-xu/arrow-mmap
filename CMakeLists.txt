@@ -24,7 +24,7 @@ endif()
 add_subdirectory(third_party/nanoarrow)
 
 file(GLOB_RECURSE MMAP_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/src/mmap_arrow/*.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/arrow_mmap/*.cpp")
 
 add_library(${PROJECT_NAME} ${MMAP_SOURCES})
 target_include_directories(${PROJECT_NAME}

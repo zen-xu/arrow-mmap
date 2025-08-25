@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "mmap_arrow/arrow_manager.hpp"
+#include "arrow_mmap/arrow_manager.hpp"
 
 const size_t BATCH_SIZE = 5000;
 const auto SCHEMA = arrow::schema([]() {

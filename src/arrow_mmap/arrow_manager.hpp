@@ -4,10 +4,10 @@
 
 #include <arrow/api.h>
 
-#include "mmap_arrow/arrow_meta.hpp"
-#include "mmap_arrow/arrow_reader.hpp"
-#include "mmap_arrow/arrow_writer.hpp"
-#include "mmap_arrow/manager.hpp"
+#include "arrow_meta.hpp"
+#include "arrow_reader.hpp"
+#include "arrow_writer.hpp"
+#include "manager.hpp"
 
 namespace mmap_arrow {
 

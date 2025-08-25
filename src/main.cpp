@@ -2,8 +2,8 @@
 #include <libassert/assert.hpp>
 #include <nanoarrow/nanoarrow_ipc.hpp>
 
-#include "mmap_arrow/arrow_manager.hpp"
-#include "mmap_arrow/arrow_meta.hpp"
+#include "arrow_mmap/arrow_manager.hpp"
+#include "arrow_mmap/arrow_meta.hpp"
 
 const auto SCHEMA = arrow::schema({arrow::field("a", arrow::int32()), arrow::field("b", arrow::float32())});
 

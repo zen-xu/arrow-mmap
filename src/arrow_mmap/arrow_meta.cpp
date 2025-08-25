@@ -1,4 +1,4 @@
-#include "mmap_arrow/arrow_meta.hpp"
+#include "arrow_meta.hpp"
 
 #include <fstream>
 

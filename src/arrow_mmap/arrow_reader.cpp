@@ -1,4 +1,4 @@
-#include "mmap_arrow/arrow_reader.hpp"
+#include "arrow_reader.hpp"
 
 #include <libassert/assert.hpp>
 

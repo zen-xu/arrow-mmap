@@ -50,7 +50,7 @@ bool WriteStreamToFile(const std::string& filepath, ArrowArrayStream& stream) {
 }
 
 int main() {
-  auto manager = mmap_arrow::ArrowManager::create("db", 2, 11, 5, SCHEMA);
+  auto manager = arrow_mmap::ArrowManager::create("db", 2, 11, 5, SCHEMA);
   auto meta = manager.meta();
   std::cout << meta.to_string() << std::endl;
 

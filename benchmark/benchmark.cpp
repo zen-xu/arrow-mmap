@@ -15,7 +15,7 @@ const auto SCHEMA = arrow::schema([]() {
 static void BM_Reader(benchmark::State& state) {
   auto array_length = 100;
   auto capacity = BATCH_SIZE / array_length;
-  auto manager = mmap_arrow::ArrowManager::create("benchmark_reader", 1, array_length, capacity, SCHEMA,
+  auto manager = arrow_mmap::ArrowManager::create("benchmark_reader", 1, array_length, capacity, SCHEMA,
                                                   {.fill_with = std::byte(0xff)});
   nanoarrow::UniqueArrayStream stream;
   auto reader = manager.reader();

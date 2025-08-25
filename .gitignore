@@ -49,3 +49,4 @@ build
 
 *.mmap
 *.bin
+*.arrow

@@ -8,6 +8,7 @@ version   = "0.1.0"
 [tasks]
 
 [dependencies]
+python        = ">=3.13,<3.14"
 lld           = ">=19.1.7,<21"
 clang         = ">=19.1.7,<21"
 clangxx       = ">=19.1.7,<21"
@@ -23,9 +24,9 @@ taplo         = "*"
 benchmark     = ">=1.9.4,<2"
 libarrow      = ">=21.0.0,<22"
 mimalloc      = ">=3.1.5,<4"
-nanoarrow     = ">=0.6.0,<0.7"
 ipython       = ">=9.4.0,<10"
 pyarrow       = ">=21.0.0,<22"
 pyarrow-stubs = ">=20.0.0.20250716,<21"
-libassert     = ">=2.1.4_2,<3"
 pandas        = ">=2.3.2,<3"
+libassert     = { version = ">=2,<3", channel = "https://repo.prefix.dev/cxxlibs" }
+nanoarrow     = { version = ">=0.6.0,<0.7", channel = "https://repo.prefix.dev/cxxlibs" }

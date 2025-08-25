@@ -1,4 +1,0 @@
-[submodule "third_party/nanoarrow"]
-	path = third_party/nanoarrow
-	url = https://github.com/apache/arrow-nanoarrow.git
-	branch = maint-0.6.0

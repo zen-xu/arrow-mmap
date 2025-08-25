@@ -7,4 +7,5 @@ with na_ipc.InputStream.from_path("stream.arrow") as input_stream:
     batch = pa.RecordBatchReader._import_from_c(cstream._addr()).read_next_batch()
     df = batch.to_pandas()
 
+
 print(df)

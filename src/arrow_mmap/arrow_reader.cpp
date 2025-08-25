@@ -88,14 +88,6 @@ inline ArrowType as_nanoarrow_type(arrow::Type::type type) {
       return NANOARROW_TYPE_BINARY_VIEW;
     case arrow::Type::STRING_VIEW:
       return NANOARROW_TYPE_STRING_VIEW;
-    case arrow::Type::DECIMAL32:
-      return NANOARROW_TYPE_DECIMAL32;
-    case arrow::Type::DECIMAL64:
-      return NANOARROW_TYPE_DECIMAL64;
-    case arrow::Type::LIST_VIEW:
-      return NANOARROW_TYPE_LIST_VIEW;
-    case arrow::Type::LARGE_LIST_VIEW:
-      return NANOARROW_TYPE_LARGE_LIST_VIEW;
     default:
       return NANOARROW_TYPE_UNINITIALIZED;
   }

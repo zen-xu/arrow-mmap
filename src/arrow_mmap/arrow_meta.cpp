@@ -5,7 +5,7 @@
 #include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 std::string ArrowMeta::to_string() const {
   return std::format("writer_count: {}\narray_length: {}\ncapacity: {}\nschema:\n{}", writer_count, array_length,
@@ -57,4 +57,4 @@ ArrowMeta ArrowMeta::deserialize(const std::string& input_file) {
   ifs.close();
   return meta;
 }
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap

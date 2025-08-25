@@ -4,7 +4,7 @@
 #include <libassert/assert.hpp>
 #include <vector>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 const std::string get_data_file(const std::string& location) {
   return std::filesystem::path(std::filesystem::absolute(location)) / "data.mmap";
@@ -123,4 +123,4 @@ const ArrowMeta& ArrowManager::meta() const noexcept { return impl_->meta_; }
 const std::shared_ptr<ArrowWriter> ArrowManager::writer(const size_t id) noexcept { return impl_->writer(id); }
 const std::shared_ptr<ArrowReader> ArrowManager::reader() noexcept { return impl_->reader(); }
 
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap

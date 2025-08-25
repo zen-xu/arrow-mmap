@@ -1,10 +1,10 @@
-#ifndef MMAP_ARROW_ARROW_META_HPP
-#define MMAP_ARROW_ARROW_META_HPP
+#ifndef ARROW_MMAP_ARROW_META_HPP
+#define ARROW_MMAP_ARROW_META_HPP
 #pragma once
 
 #include <arrow/api.h>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 struct ArrowMeta {
   size_t writer_count;
@@ -20,5 +20,5 @@ struct ArrowMeta {
   static ArrowMeta deserialize(const std::string& input_file);
 };
 
-}  // namespace mmap_arrow
-#endif
+}  // namespace arrow_mmap
+#endif  // ARROW_MMAP_ARROW_META_HPP

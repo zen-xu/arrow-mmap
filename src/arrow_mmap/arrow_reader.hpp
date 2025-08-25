@@ -1,5 +1,5 @@
-#ifndef MMAP_ARROW_ARROW_READER_HPP
-#define MMAP_ARROW_ARROW_READER_HPP
+#ifndef ARROW_MMAP_ARROW_READER_HPP
+#define ARROW_MMAP_ARROW_READER_HPP
 #pragma once
 
 #include <nanoarrow/nanoarrow.hpp>
@@ -7,7 +7,7 @@
 #include "arrow_meta.hpp"
 #include "interface.hpp"
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 class ArrowReader {
  public:
   ArrowReader(const ArrowMeta meta, const IMmapReader* data_reader, const IMmapReader* bitmap_reader);
@@ -29,5 +29,5 @@ class ArrowReader {
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray struct_array_;
 };
-}  // namespace mmap_arrow
-#endif  // MMAP_ARROW_ARROW_READER_HPP
+}  // namespace arrow_mmap
+#endif  // ARROW_MMAP_ARROW_READER_HPP

@@ -1,5 +1,5 @@
-#ifndef MMAP_ARROW_ARROW_WRITER_HPP
-#define MMAP_ARROW_ARROW_WRITER_HPP
+#ifndef ARROW_MMAP_ARROW_WRITER_HPP
+#define ARROW_MMAP_ARROW_WRITER_HPP
 #pragma once
 
 #include <arrow/api.h>
@@ -7,7 +7,7 @@
 #include "arrow_meta.hpp"
 #include "interface.hpp"
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 class ArrowWriter {
  public:
@@ -32,5 +32,5 @@ class ArrowWriter {
   const size_t batch_size_;
 };
 
-}  // namespace mmap_arrow
-#endif
+}  // namespace arrow_mmap
+#endif  // ARROW_MMAP_ARROW_WRITER_HPP

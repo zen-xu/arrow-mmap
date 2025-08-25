@@ -2,7 +2,7 @@
 
 #include <libassert/assert.hpp>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 ArrowWriter::ArrowWriter(const size_t id, const ArrowMeta meta, const IMmapWriter* data_writer,
                          const IMmapWriter* bitmap_writer)
@@ -68,4 +68,4 @@ bool ArrowWriter::write(const std::shared_ptr<arrow::RecordBatch>& batch, const 
   bitmap_addr[index * meta_.writer_count + id] = std::byte(0xff);
   return true;
 }
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap

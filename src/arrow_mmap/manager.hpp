@@ -1,12 +1,12 @@
-#ifndef MMAP_ARROW_MMAP_MANAGER_HPP
-#define MMAP_ARROW_MMAP_MANAGER_HPP
+#ifndef ARROW_MMAP_MANAGER_HPP
+#define ARROW_MMAP_MANAGER_HPP
 #pragma once
 
 #include <string>
 
 #include "interface.hpp"
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 struct MmapManagerOptions {
   int reader_flags = 0;
@@ -43,6 +43,6 @@ class MmapManager {
   Impl* impl_;
 };
 
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap
 
-#endif
+#endif  // ARROW_MMAP_MANAGER_HPP

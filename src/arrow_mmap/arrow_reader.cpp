@@ -2,7 +2,7 @@
 
 #include <libassert/assert.hpp>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 inline ArrowType as_nanoarrow_type(arrow::Type::type type) {
   switch (type) {
@@ -176,4 +176,4 @@ bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream, const size_t index)
 
   return true;
 }
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap

@@ -1,10 +1,10 @@
-#ifndef MMAP_ARROW_MMAP_INTERFACE_HPP
-#define MMAP_ARROW_MMAP_INTERFACE_HPP
+#ifndef ARROW_MMAP_INTERFACE_HPP
+#define ARROW_MMAP_INTERFACE_HPP
 #pragma once
 
 #include <cstddef>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 class IMmapReader {
  public:
@@ -18,6 +18,6 @@ class IMmapWriter {
   virtual std::byte* mmap_addr() const = 0;
 };
 
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap
 
-#endif
+#endif  // ARROW_MMAP_INTERFACE_HPP

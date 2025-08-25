@@ -2,7 +2,6 @@
 
 #include <cstring>
 #include <filesystem>
-#include <iostream>
 #include <libassert/assert.hpp>
 
 #include <fcntl.h>
@@ -10,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 size_t get_fd_length(int fd) {
   struct stat st;
@@ -117,4 +116,4 @@ MmapManager::~MmapManager() {
 
 IMmapReader* MmapManager::reader() const noexcept { return impl_->reader(); }
 IMmapWriter* MmapManager::writer() const noexcept { return impl_->writer(); }
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap

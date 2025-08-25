@@ -1,5 +1,5 @@
-#ifndef MMAP_ARROW_ARROW_MANAGER_HPP
-#define MMAP_ARROW_ARROW_MANAGER_HPP
+#ifndef ARROW_MMAP_ARROW_MANAGER_HPP
+#define ARROW_MMAP_ARROW_MANAGER_HPP
 #pragma once
 
 #include <arrow/api.h>
@@ -9,7 +9,7 @@
 #include "arrow_writer.hpp"
 #include "manager.hpp"
 
-namespace mmap_arrow {
+namespace arrow_mmap {
 
 class ArrowManager {
  public:
@@ -75,6 +75,6 @@ class ArrowManager {
   Impl* impl_;
 };
 
-}  // namespace mmap_arrow
+}  // namespace arrow_mmap
 
-#endif  // MMAP_ARROW_ARROW_MANAGER_HPP
+#endif  // ARROW_MMAP_ARROW_MANAGER_HPP

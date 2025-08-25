@@ -28,5 +28,5 @@ ipython       = ">=9.4.0,<10"
 pyarrow       = ">=21.0.0,<22"
 pyarrow-stubs = ">=20.0.0.20250716,<21"
 pandas        = ">=2.3.2,<3"
+nanoarrow     = ">=0.6.0,<0.7"
 libassert     = { version = ">=2,<3", channel = "https://repo.prefix.dev/cxxlibs" }
-nanoarrow     = { version = ">=0.6.0,<0.7", channel = "https://repo.prefix.dev/cxxlibs" }

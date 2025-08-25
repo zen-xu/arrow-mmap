@@ -121,7 +121,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.2-py313h8060acc_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/matplotlib-inline-0.1.7-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mimalloc-3.1.5-h54a6638_0.conda
-      - conda: https://repo.prefix.dev/cxxlibs/linux-64/nanoarrow-0.6.0-hb0f4dca_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nanoarrow-0.6.0-py313h536fd9c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.13.1-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nlohmann_json-3.12.0-h3f2d84a_0.conda
@@ -141,7 +141,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pure_eval-0.2.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py313h78bf25f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py313he109ebe_0_cpu.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250716-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250825-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/python-3.13.5-hec9711d_102_cp313.conda
@@ -1632,13 +1632,18 @@ packages:
   license_family: MIT
   size: 103866
   timestamp: 1752824520127
-- conda: https://repo.prefix.dev/cxxlibs/linux-64/nanoarrow-0.6.0-hb0f4dca_1.conda
-  sha256: 6282feebb008c7c11c2712a480ee4e7000e0c51e1bc4ac087c4732bec20fa64d
+- conda: https://conda.anaconda.org/conda-forge/linux-64/nanoarrow-0.6.0-py313h536fd9c_0.conda
+  sha256: 643271369ba8bce7efd3b4ac350a9df50a0107f5d1e459c85f65cecd99a54c99
+  md5: d0cc619bd5b860bdfc4f1fecec28f93f
   depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  - python >=3.13,<3.14.0a0
   - python_abi 3.13.* *_cp313
   license: Apache-2.0
-  size: 858454
-  timestamp: 1756103446996
+  license_family: APACHE
+  size: 647448
+  timestamp: 1728825543095
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
   sha256: 3fde293232fa3fca98635e1167de6b7c7fda83caf24b9d6c91ec9eefb4f4d586
   md5: 47e340acb35de30501a76c7c799c41d7
@@ -1900,15 +1905,14 @@ packages:
   license_family: APACHE
   size: 5345643
   timestamp: 1753371833528
-- conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250716-pyhd8ed1ab_0.conda
-  sha256: 6fa47a5efd8ddfc05c3edf76d129bb59ca389616ad25c3967c8c150649f8b4e4
-  md5: d4235a58799a7ff77572a0bbd9379b10
+- conda: https://conda.anaconda.org/conda-forge/noarch/pyarrow-stubs-20.0.0.20250825-pyhd8ed1ab_0.conda
+  sha256: 4676b68609ff275d18c12775f80430f1eb667c6015a948fa9e68e382f283164c
+  md5: e42b443c082b15d19eaa849d26778bd5
   depends:
-  - python >=3.9,<4.0
+  - python >=3.10,<4.0
   license: BSD-2-Clause
-  license_family: BSD
-  size: 168273
-  timestamp: 1752673044675
+  size: 168261
+  timestamp: 1756107242811
 - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
   sha256: 79db7928d13fab2d892592223d7570f5061c192f27b9febd1a418427b719acc6
   md5: 12c566707c80111f9799308d9e265aef

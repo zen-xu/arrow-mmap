@@ -7,7 +7,14 @@ set(NANOARROW_IPC ON)
 
 find_package(Arrow REQUIRED)
 find_package(libassert REQUIRED)
-find_package(nanoarrow REQUIRED)
+
+include(FetchContent)
+FetchContent_Declare(
+  nanoarrow
+  GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
+  GIT_TAG apache-arrow-nanoarrow-0.6.0
+)
+FetchContent_MakeAvailable(nanoarrow)
 
 file(GLOB_RECURSE MMAP_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/src/arrow_mmap/*.cpp")

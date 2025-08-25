@@ -33,7 +33,5 @@ target_link_libraries(
   ${PROJECT_NAME} PUBLIC Arrow::arrow_shared libassert::assert
                          nanoarrow::nanoarrow nanoarrow::nanoarrow_ipc)
 
-add_executable(main ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${MMAP_SOURCES})
-target_link_libraries(main PRIVATE ${PROJECT_NAME})
-
 add_subdirectory(benchmark)
+add_subdirectory(example)

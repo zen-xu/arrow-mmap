@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "interface.hpp"
+#include "arrow_mmap/interface.hpp"
 
 namespace arrow_mmap {
 

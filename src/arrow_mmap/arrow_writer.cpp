@@ -1,4 +1,4 @@
-#include "arrow_writer.hpp"
+#include "arrow_mmap/arrow_writer.hpp"
 
 #include <libassert/assert.hpp>
 

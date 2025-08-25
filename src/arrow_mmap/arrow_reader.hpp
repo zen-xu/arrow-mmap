@@ -4,8 +4,8 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "arrow_meta.hpp"
-#include "interface.hpp"
+#include "arrow_mmap/arrow_meta.hpp"
+#include "arrow_mmap/interface.hpp"
 
 namespace arrow_mmap {
 class ArrowReader {

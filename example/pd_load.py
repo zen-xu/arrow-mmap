@@ -1,12 +1,7 @@
-import nanoarrow.ipc as na_ipc
-import nanoarrow as na
-import pyarrow as pa
+import pyarrow.ipc as pa_ipc
 
 
-with na_ipc.InputStream.from_path("stream.arrow") as input_stream:
-    cstream = na.c_array_stream(input_stream)
-    batch = pa.RecordBatchReader._import_from_c(cstream._addr()).read_next_batch()
-    df = batch.to_pandas()
-
+with open("stream.arrow", "rb") as f:
+    df = pa_ipc.open_stream(f).read_all().to_pandas()
 
 print(df)

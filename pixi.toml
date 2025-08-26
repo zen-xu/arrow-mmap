@@ -1,6 +1,6 @@
 [workspace]
 authors   = ["ZhengYu, Xu <zen-xu@outlook.com>"]
-channels  = ["conda-forge", "https://repo.prefix.dev/cxxlibs"]
+channels  = ["conda-forge", "cxxlibs"]
 name      = "arrow-mmap"
 platforms = ["linux-64"]
 version   = "0.1.0"
@@ -24,7 +24,7 @@ taplo        = "*"
 benchmark    = ">=1.9.4,<2"
 libarrow     = ">=21.0.0,<22"
 mimalloc     = ">=3.1.5,<4"
-libassert    = { version = ">=2,<3", channel = "https://repo.prefix.dev/cxxlibs" }
+libassert    = { version = ">=2,<3", channel = "cxxlibs" }
 
 [pypi-dependencies]
 polars        = ">=1.32.3, <2"

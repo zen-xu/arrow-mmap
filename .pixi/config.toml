@@ -1,0 +1,5 @@
+[mirrors]
+"https://conda.anaconda.org" = ["https://prefix.dev"]
+"https://conda.anaconda.org/conda-forge/label" = [
+  "https://conda.anaconda.org/conda-forge/label",
+]

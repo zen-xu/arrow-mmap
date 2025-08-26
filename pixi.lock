@@ -3,7 +3,7 @@ environments:
   default:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
-    - url: https://repo.prefix.dev/cxxlibs/
+    - url: https://conda.anaconda.org/cxxlibs/
     indexes:
     - https://pypi.org/simple
     packages:
@@ -57,7 +57,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ld_impl_linux-64-2.44-h1423503_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libabseil-20250512.1-cxx17_hba17884_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libarrow-21.0.0-hb116c0f_1_cpu.conda
-      - conda: https://repo.prefix.dev/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlicommon-1.1.0-hb9d3cd8_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlidec-1.1.0-hb9d3cd8_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlienc-1.1.0-hb9d3cd8_3.conda
@@ -964,7 +964,7 @@ packages:
   purls: []
   size: 6508107
   timestamp: 1754309354037
-- conda: https://repo.prefix.dev/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
+- conda: https://conda.anaconda.org/cxxlibs/linux-64/libassert-2.1.4_2-hb0f4dca_0.conda
   sha256: e40d0626e76d8beae478ba8c2fec63b981d15649fb70fb894d7fb0ed2280153b
   depends:
   - libzlib >=1.3.1,<2.0a0
@@ -2022,7 +2022,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/six?source=hash-mapping
+  - pkg:pypi/six?source=compressed-mapping
   size: 18455
   timestamp: 1753199211006
 - conda: https://conda.anaconda.org/conda-forge/linux-64/snappy-1.2.2-h03e3b7b_0.conda

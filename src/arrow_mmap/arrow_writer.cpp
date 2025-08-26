@@ -5,11 +5,11 @@
 namespace arrow_mmap {
 
 ArrowWriter::ArrowWriter(const size_t id, const ArrowMeta meta, const IMmapWriter* data_writer,
-                         const IMmapWriter* bitmap_writer)
+                         const IMmapWriter* bitflag_writer)
     : id(id),
       meta_(meta),
       data_writer_(data_writer),
-      bitmap_writer_(bitmap_writer),
+      bitflag_writer_(bitflag_writer),
       write_rows([id, meta]() {
         if (id < meta.writer_count - 1) {
           return meta.array_length / meta.writer_count;
@@ -64,8 +64,8 @@ bool ArrowWriter::write(const std::shared_ptr<arrow::RecordBatch>& batch, const 
   }
 
   // mark the index of current writer is written
-  auto bitmap_addr = bitmap_writer_->mmap_addr();
-  bitmap_addr[index * meta_.writer_count + id] = std::byte(0xff);
+  auto bitflag_addr = bitflag_writer_->mmap_addr();
+  bitflag_addr[index * meta_.writer_count + id] = std::byte(0xff);
   return true;
 }
 }  // namespace arrow_mmap

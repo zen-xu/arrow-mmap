@@ -10,7 +10,7 @@
 namespace arrow_mmap {
 class ArrowReader {
  public:
-  ArrowReader(const ArrowMeta meta, const IMmapReader* data_reader, const IMmapReader* bitmap_reader);
+  ArrowReader(const ArrowMeta meta, const IMmapReader* data_reader, const IMmapReader* bitflag_reader);
 
   bool read(nanoarrow::UniqueArrayStream& stream);
   bool read(nanoarrow::UniqueArrayStream& stream, const size_t index);
@@ -20,7 +20,7 @@ class ArrowReader {
  private:
   const ArrowMeta meta_;
   const IMmapReader* data_reader_;
-  const IMmapReader* bitmap_reader_;
+  const IMmapReader* bitflag_reader_;
   const size_t batch_size_;
   const std::vector<size_t> col_sizes_;
   const std::vector<ArrowType> col_types_;

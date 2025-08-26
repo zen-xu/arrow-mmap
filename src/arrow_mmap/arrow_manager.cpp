@@ -10,8 +10,8 @@ const std::string get_data_file(const std::string& location) {
   return std::filesystem::path(std::filesystem::absolute(location)) / "data.mmap";
 }
 
-const std::string get_bitmap_file(const std::string& location) {
-  return std::filesystem::path(std::filesystem::absolute(location)) / "bitmap.mmap";
+const std::string get_bitflag_file(const std::string& location) {
+  return std::filesystem::path(std::filesystem::absolute(location)) / "bitflag.mmap";
 }
 
 const std::string get_meta_file(const std::string& location) {
@@ -20,9 +20,9 @@ const std::string get_meta_file(const std::string& location) {
 
 class ArrowManager::Impl {
  public:
-  Impl(MmapManager&& data_manager, MmapManager&& bitmap_manager, const ArrowMeta meta)
+  Impl(MmapManager&& data_manager, MmapManager&& bitflag_manager, const ArrowMeta meta)
       : data_manager_(std::move(data_manager)),
-        bitmap_manager_(std::move(bitmap_manager)),
+        bitflag_manager_(std::move(bitflag_manager)),
         meta_(meta),
         writers_(std::vector<std::shared_ptr<ArrowWriter>>(meta.writer_count)) {}
 
@@ -30,7 +30,7 @@ class ArrowManager::Impl {
     ASSERT(id < meta_.writer_count, "id out of range, id: {}, writer_count: {}", id, meta_.writer_count);
     auto writer = writers_[id];
     if (nullptr == writer) {
-      writer = std::make_shared<ArrowWriter>(id, meta_, data_manager_.writer(), bitmap_manager_.writer());
+      writer = std::make_shared<ArrowWriter>(id, meta_, data_manager_.writer(), bitflag_manager_.writer());
       writers_[id] = writer;
     }
     return writer;
@@ -38,7 +38,7 @@ class ArrowManager::Impl {
 
   const std::shared_ptr<ArrowReader> reader() noexcept {
     if (nullptr == reader_) {
-      reader_ = std::make_shared<ArrowReader>(meta_, data_manager_.reader(), bitmap_manager_.reader());
+      reader_ = std::make_shared<ArrowReader>(meta_, data_manager_.reader(), bitflag_manager_.reader());
     }
     return reader_;
   }
@@ -47,7 +47,7 @@ class ArrowManager::Impl {
   friend class ArrowManager;
 
   const MmapManager data_manager_;
-  const MmapManager bitmap_manager_;
+  const MmapManager bitflag_manager_;
   const ArrowMeta meta_;
   std::vector<std::shared_ptr<ArrowWriter>> writers_;
   std::shared_ptr<ArrowReader> reader_;
@@ -59,10 +59,10 @@ ArrowManager::ArrowManager(const std::string& location, const MmapManagerOptions
   auto meta_file = get_meta_file(location);
   auto meta = ArrowMeta::deserialize(meta_file);
   auto data_file = get_data_file(location);
-  auto bitmap_file = get_bitmap_file(location);
+  auto bitflag_file = get_bitflag_file(location);
   auto data_manager = MmapManager(data_file, options);
-  auto bitmap_manager = MmapManager(bitmap_file, options);
-  impl_ = new Impl(std::move(data_manager), std::move(bitmap_manager), meta);
+  auto bitflag_manager = MmapManager(bitflag_file, options);
+  impl_ = new Impl(std::move(data_manager), std::move(bitflag_manager), meta);
 }
 
 ArrowManager::~ArrowManager() {
@@ -91,10 +91,10 @@ ArrowManager ArrowManager::create(const std::string& location, const size_t writ
                                      [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); });
   auto data_manager = MmapManager::create(data_file, data_length, options);
 
-  // init bitmap manager
-  auto bitmap_file = get_bitmap_file(location);
-  auto bitmap_length = capacity * writer_count;
-  auto bitmap_manager = MmapManager::create(bitmap_file, bitmap_length, options);
+  // init bitflag manager
+  auto bitflag_file = get_bitflag_file(location);
+  auto bitflag_length = capacity * writer_count;
+  auto bitflag_manager = MmapManager::create(bitflag_file, bitflag_length, options);
 
   // init meta
   auto meta = ArrowMeta{
@@ -110,7 +110,7 @@ ArrowManager ArrowManager::create(const std::string& location, const size_t writ
   meta.serialize(meta_tmp_file);
   std::filesystem::rename(meta_tmp_file, meta_file);
 
-  auto impl = new Impl(std::move(data_manager), std::move(bitmap_manager), meta);
+  auto impl = new Impl(std::move(data_manager), std::move(bitflag_manager), meta);
   return ArrowManager(impl);
 }
 

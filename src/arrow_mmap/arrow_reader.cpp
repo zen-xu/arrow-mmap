@@ -93,10 +93,10 @@ inline ArrowType as_nanoarrow_type(arrow::Type::type type) {
   }
 }
 
-ArrowReader::ArrowReader(const ArrowMeta meta, const IMmapReader* data_reader, const IMmapReader* bitmap_reader)
+ArrowReader::ArrowReader(const ArrowMeta meta, const IMmapReader* data_reader, const IMmapReader* bitflag_reader)
     : meta_(meta),
       data_reader_(data_reader),
-      bitmap_reader_(bitmap_reader),
+      bitflag_reader_(bitflag_reader),
       batch_size_(std::accumulate(meta_.schema->fields().begin(), meta_.schema->fields().end(), 0,
                                   [](size_t acc, const auto& field) { return acc + field->type()->byte_width(); })),
       col_sizes_([&]() {
@@ -147,8 +147,8 @@ bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream) {
 bool ArrowReader::read(nanoarrow::UniqueArrayStream& stream, const size_t index) {
   ASSERT(index < meta_.capacity, "index out of range, index: {}, capacity: {}", index, meta_.capacity);
 
-  auto bitmap_addr = bitmap_reader_->mmap_addr() + index * meta_.writer_count;
-  if (!std::all_of(bitmap_addr, bitmap_addr + meta_.writer_count,
+  auto bitflag_addr = bitflag_reader_->mmap_addr() + index * meta_.writer_count;
+  if (!std::all_of(bitflag_addr, bitflag_addr + meta_.writer_count,
                    [](const std::byte& b) { return b == std::byte(0xff); })) {
     return false;
   }

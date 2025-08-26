@@ -11,7 +11,7 @@ namespace arrow_mmap {
 
 class ArrowWriter {
  public:
-  ArrowWriter(const size_t id, const ArrowMeta meta, const IMmapWriter* data_writer, const IMmapWriter* bitmap_writer);
+  ArrowWriter(const size_t id, const ArrowMeta meta, const IMmapWriter* data_writer, const IMmapWriter* bitflag_writer);
 
   bool write(const std::shared_ptr<arrow::RecordBatch>& batch);
   bool write(const std::shared_ptr<arrow::RecordBatch>& batch, const size_t index);
@@ -25,7 +25,7 @@ class ArrowWriter {
   size_t index_ = 0;
   const ArrowMeta meta_;
   const IMmapWriter* data_writer_;
-  const IMmapWriter* bitmap_writer_;
+  const IMmapWriter* bitflag_writer_;
   const std::vector<size_t> col_sizes_;
   const std::vector<size_t> col_array_sizes_;
   const std::vector<size_t> col_array_offsets_;

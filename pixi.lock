@@ -101,6 +101,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.2-py313h8060acc_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mimalloc-3.1.5-h54a6638_0.conda
+      - conda: https://conda.anaconda.org/cxxlibs/linux-64/nanoarrow-0.7.0-py313hf70daa8_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.13.1-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nlohmann_json-3.12.0-h3f2d84a_0.conda
@@ -138,7 +139,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d9/33/1f075bf72b0b747cb3288d011319aaf64083cf2efef8354174e3ed4540e2/ipython_pygments_lexers-1.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c0/5a/9cac0c82afec3d09ccd97c8b6502d48f165f9124db81b4bcb90b4af974ee/jedi-0.19.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/8e/9ad090d3553c280a8060fbf6e24dc1c0c29704ee7d1c372f0c174aa59285/matplotlib_inline-0.1.7-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/fb/76/d2245c8aa94d34fd5133c274e7785861fd667ecf49adb9d603fd8ebbc839/nanoarrow-0.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/1d/0f/571b2c7a3833ae419fe69ff7b479a78d313581785203cc70a8db90121b9a/numpy-2.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/8f/52/0634adaace9be2d8cac9ef78f05c47f3a675882e068438b9d7ec7ef0c13f/pandas-2.3.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/16/32/f8e3c85d1d5250232a5d3477a2a28cc291968ff175caeadaf3cc19ce0e4a/parso-0.8.5-py2.py3-none-any.whl
@@ -1565,19 +1565,15 @@ packages:
   purls: []
   size: 103866
   timestamp: 1752824520127
-- pypi: https://files.pythonhosted.org/packages/fb/76/d2245c8aa94d34fd5133c274e7785861fd667ecf49adb9d603fd8ebbc839/nanoarrow-0.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  name: nanoarrow
-  version: 0.7.0
-  sha256: 092afc62040a2fbaa50bd44c6cab72fc543c0ac876534a1b60924ae93e0840c9
-  requires_dist:
-  - pyarrow ; extra == 'test'
-  - python-dateutil ; extra == 'test'
-  - pytest ; extra == 'test'
-  - numpy ; extra == 'test'
-  - python-dateutil ; extra == 'verify'
-  - pytest ; extra == 'verify'
-  - numpy ; extra == 'verify'
-  requires_python: '>=3.9'
+- conda: https://conda.anaconda.org/cxxlibs/linux-64/nanoarrow-0.7.0-py313hf70daa8_4.conda
+  sha256: d9e860160c0822aac1ad5ea7dc2fe158bd8363d2ca54623863931b9a0b075522
+  depends:
+  - libstdcxx >=15
+  - libgcc >=15
+  - python_abi 3.13.* *_cp313
+  license: Apache-2.0
+  size: 920336
+  timestamp: 1756195218894
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
   sha256: 3fde293232fa3fca98635e1167de6b7c7fda83caf24b9d6c91ec9eefb4f4d586
   md5: 47e340acb35de30501a76c7c799c41d7

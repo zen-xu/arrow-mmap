@@ -25,11 +25,11 @@ benchmark    = ">=1.9.4,<2"
 libarrow     = ">=21.0.0,<22"
 mimalloc     = ">=3.1.5,<4"
 libassert    = { version = ">=2,<3", channel = "cxxlibs" }
+nanoarrow    = { version = ">=0.7.0,<1", channel = "cxxlibs" }
 
 [pypi-dependencies]
-polars        = ">=1.32.3, <2"
+polars        = ">=1.32.3,<2"
 ipython       = ">=9.4.0,<10"
 pyarrow       = ">=21.0.0,<22"
 pyarrow-stubs = ">=20.0.0.20250716"
 pandas        = ">=2.3.2,<3"
-nanoarrow     = ">=0.7.0,<0.8"

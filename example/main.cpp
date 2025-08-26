@@ -40,9 +40,18 @@ bool WriteStreamToFile(const std::string& filepath, ArrowArrayStream& stream) {
     return false;
   }
 
-  ArrowError error_code;
-  if (ArrowIpcWriterWriteArrayStream(writer.get(), &stream, &error_code) != NANOARROW_OK) {
-    printf("Error: %s\n", error_code.message);
+  if (ArrowIpcWriterStartFile(writer.get(), &error) != NANOARROW_OK) {
+    std::print(std::cerr, "Error: {}", error.message);
+    return false;
+  }
+
+  if (ArrowIpcWriterWriteArrayStream(writer.get(), &stream, &error) != NANOARROW_OK) {
+    std::print(std::cerr, "Error: {}", error.message);
+    return false;
+  }
+
+  if (ArrowIpcWriterFinalizeFile(writer.get(), &error) != NANOARROW_OK) {
+    std::print(std::cerr, "Error: {}", error.message);
     return false;
   }
 

@@ -48,7 +48,7 @@ class MmapManager::Impl {
 
   MmapReader* reader() {
     if (nullptr == reader_) {
-      auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_SHARED | options_.reader_flags, file_fd_, 0);
+      auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_PRIVATE | options_.reader_flags, file_fd_, 0);
       ASSERT(addr != MAP_FAILED, std::format("reader failed to mmap file: {}, error: {}", file_, strerror(errno)));
       reader_ = new MmapReader(static_cast<std::byte*>(addr), file_length_);
     }

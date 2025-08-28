@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+#include <sys/mman.h>
 
 #include "arrow_mmap/arrow_manager.hpp"
 
@@ -12,11 +13,11 @@ const auto SCHEMA = arrow::schema([]() {
   return fields;
 }());
 
-static void BM_Reader(benchmark::State& state) {
+static void BM_ReaderNormal(benchmark::State& state) {
   auto array_length = 100;
   auto capacity = BATCH_SIZE / array_length;
-  auto manager = arrow_mmap::ArrowManager::create("benchmark_reader", 1, array_length, capacity, SCHEMA,
-                                                  {.fill_with = std::byte(0xff)});
+  auto manager = arrow_mmap::ArrowManager::create("benchmark_reader_normal", 1, array_length, capacity, SCHEMA,
+                                                  {.madvise = MADV_NORMAL, .fill_with = std::byte(0xff)});
   nanoarrow::UniqueArrayStream stream;
   auto reader = manager.reader();
   for (auto _ : state) {
@@ -26,5 +27,36 @@ static void BM_Reader(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_Reader)->Iterations(100);
+static void BM_ReaderWillNeed(benchmark::State& state) {
+  auto array_length = 100;
+  auto capacity = BATCH_SIZE / array_length;
+  auto manager = arrow_mmap::ArrowManager::create("benchmark_reader", 1, array_length, capacity, SCHEMA,
+                                                  {.madvise = MADV_WILLNEED, .fill_with = std::byte(0xff)});
+  nanoarrow::UniqueArrayStream stream;
+  auto reader = manager.reader();
+  for (auto _ : state) {
+    for (size_t i = 0; i < capacity; i++) {
+      reader->read(stream, i);
+    }
+  }
+}
+
+static void BM_ReaderWillNeedPopulate(benchmark::State& state) {
+  auto array_length = 100;
+  auto capacity = BATCH_SIZE / array_length;
+  auto manager = arrow_mmap::ArrowManager::create(
+      "benchmark_reader", 1, array_length, capacity, SCHEMA,
+      {.reader_flags = MAP_POPULATE, .madvise = MADV_WILLNEED, .fill_with = std::byte(0xff)});
+  nanoarrow::UniqueArrayStream stream;
+  auto reader = manager.reader();
+  for (auto _ : state) {
+    for (size_t i = 0; i < capacity; i++) {
+      reader->read(stream, i);
+    }
+  }
+}
+
+BENCHMARK(BM_ReaderNormal)->Iterations(100);
+BENCHMARK(BM_ReaderWillNeed)->Iterations(100);
+BENCHMARK(BM_ReaderWillNeedPopulate)->Iterations(100);
 BENCHMARK_MAIN();

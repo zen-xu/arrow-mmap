@@ -5,15 +5,20 @@
 #include <string>
 
 #include "arrow_mmap/interface.hpp"
+#include "sys/mman.h"
 
 namespace arrow_mmap {
 
 struct MmapManagerOptions {
   int reader_flags = 0;
   int writer_flags = 0;
+  int madvise = MADV_WILLNEED;
 };
 
-struct MmapManagerCreateOptions : public MmapManagerOptions {
+struct MmapManagerCreateOptions {
+  int reader_flags = 0;
+  int writer_flags = 0;
+  int madvise = MADV_WILLNEED;
   std::byte fill_with = std::byte(0x00);
 };
 

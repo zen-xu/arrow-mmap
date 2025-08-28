@@ -48,8 +48,10 @@ class MmapManager::Impl {
 
   MmapReader* reader() {
     if (nullptr == reader_) {
-      auto addr = ::mmap(NULL, file_length_, PROT_READ, MAP_PRIVATE | options_.reader_flags, file_fd_, 0);
+      auto addr = mmap(NULL, file_length_, PROT_READ, MAP_PRIVATE | options_.reader_flags, file_fd_, 0);
       ASSERT(addr != MAP_FAILED, std::format("reader failed to mmap file: {}, error: {}", file_, strerror(errno)));
+      ASSERT(-1 != madvise(addr, file_length_, options_.madvise),
+             std::format("reader failed to madvise file: {}, error: {}", file_, strerror(errno)));
       reader_ = new MmapReader(static_cast<std::byte*>(addr), file_length_);
     }
     return reader_;
@@ -57,8 +59,10 @@ class MmapManager::Impl {
 
   MmapWriter* writer() {
     if (nullptr == writer_) {
-      auto addr = ::mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_, 0);
+      auto addr = mmap(NULL, file_length_, PROT_READ | PROT_WRITE, MAP_SHARED | options_.writer_flags, file_fd_, 0);
       ASSERT(addr != MAP_FAILED, std::format("writer failed to mmap file: {}, error: {}", file_, strerror(errno)));
+      ASSERT(-1 != madvise(addr, file_length_, options_.madvise),
+             std::format("writer failed to madvise file: {}, error: {}", file_, strerror(errno)));
       writer_ = new MmapWriter(static_cast<std::byte*>(addr), file_length_);
     }
     return writer_;
@@ -100,12 +104,14 @@ MmapManager MmapManager::create(const std::string& file, size_t length, const Mm
   ASSERT(ftruncate(fd, length) != -1, std::format("failed to truncate file: {}, error: {}", file, strerror(errno)));
 
   // filling the file content with `options.fill_with`
-  void* addr = ::mmap(nullptr, length, PROT_WRITE, MAP_SHARED, fd, 0);
+  void* addr = mmap(nullptr, length, PROT_WRITE, MAP_SHARED, fd, 0);
   ASSERT(addr != MAP_FAILED, std::format("failed to mmap file: {}, error: {}", file, strerror(errno)));
   std::memset(addr, static_cast<int>(options.fill_with), length);
   munmap(addr, length);
 
-  return MmapManager(new MmapManager::Impl(file, fd, length, options));
+  return MmapManager(new MmapManager::Impl(
+      file, fd, length,
+      {.reader_flags = options.reader_flags, .writer_flags = options.writer_flags, .madvise = options.madvise}));
 }
 
 MmapManager::~MmapManager() {
